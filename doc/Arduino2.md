@@ -16,3 +16,13 @@ to here:
 ```
 :\Users\Virtual Production 2\AppData\Local\Arduino15\packages\esp32\tools\xtensa-esp32-elf-gcc\esp-2021r2-patch5-8.4.0\xtensa-esp32-elf\include\c++\8.4.0\bits
 ```
+
+To do this in Windows explorer go to your home directory and click on the address bar and type in `\appdata`
+From there on all the folders are visible
+## 1
+<img width="560" alt="image" src="https://github.com/KKallas/ApolloFirmware/assets/37544886/88de9989-2541-4f74-b4a0-dbe03fd5acf7">
+
+## 2
+<img width="595" alt="image" src="https://github.com/KKallas/ApolloFirmware/assets/37544886/f8e637bc-f66e-42da-8a41-33823760c5f9">
+
+
