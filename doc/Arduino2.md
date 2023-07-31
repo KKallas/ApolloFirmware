@@ -2,10 +2,14 @@
 
 - [ ] Download the installer from www.arduino.com
 - [ ] Add the ESP32 HW Description by open `File` -> `Preferences` and add into additional boards manager URLs: https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json<img width="982" alt="image" src="https://github.com/digitalsputnik/ApolloHardware/assets/37544886/5657fce7-1a58-4c83-8b3b-cd56f81d641f">
+
 - [ ] Open `Tools` -> `Boards` -> `Boards Manager` and type into search espressif
 <img width="259" alt="image" src="https://github.com/KKallas/ApolloFirmware/assets/37544886/72d32b76-14c0-4d38-a7a0-9b3feb25b7fa">
+
 - [ ] Install the toolset (takes up to 10min)
 - [ ] Select correct Board (ESP32 Wrover Module) and Port, if the connection is not here check out the USBSerial.md
+<img width="352" alt="image" src="https://github.com/KKallas/ApolloFirmware/assets/37544886/3d9c5f74-139d-4826-8410-7f2b3ad2b089">
+
 
 
 from here on Arduino should compile and upload to the Apollo (or any other ESP32) device
