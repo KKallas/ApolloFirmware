@@ -1,9 +1,9 @@
 const int pwmPin = 4;
-const int pwmFrequency = 19000; // 19 kHz
-const int pwmResolution = 10;   // 10-bit resolution (1024 levels)
+const int pwmFrequency = 20000; // 19 kHz
+const int pwmResolution = 11;   // 10-bit resolution (1024 levels)
 const int pwmValue1 = 0;
-const int pwmValue2 = 256;
-const int blinkFrequency = 400; // 400 Hz (alternating between pwmValue1 and pwmValue2)
+const int pwmValue2 = 0;
+const int blinkFrequency = 200;
 
 void setup() {
   pinMode(27, OUTPUT); // Set IO27 as output
