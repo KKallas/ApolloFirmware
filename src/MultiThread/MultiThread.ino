@@ -3,7 +3,7 @@
 #include <Wire.h>
 
 const int taskCore = 0;
-const int pwmPin = 4;
+const int pwmPin = 21;
 const int pwmFrequency = 20000;     // 20 kHz
 const int pwmResolution = 11;       // 11-bit resolution (2048 levels)
 const int blinkFrequency = 200;
@@ -15,6 +15,7 @@ bool dmxIsConnected = false;
 unsigned long lastUpdate = millis();
 
 int pwmValue1 = 0;
+int pwmValue2 = 0;
 
 void ColorUpdate( void * pvParameters ){
  
@@ -22,10 +23,13 @@ void ColorUpdate( void * pvParameters ){
     taskMessage = taskMessage + xPortGetCoreID();
 
     ledcSetup(0, pwmFrequency, pwmResolution); // Configure PWM
-    ledcAttachPin(pwmPin, 0);       // Attach PWM to IO4 (Channel 0)
+    ledcSetup(1, pwmFrequency, pwmResolution); // Configure PWM
+    ledcAttachPin(pwmPin, 0);       // Attach PWM to IO22 (Red Channel)
+    ledcAttachPin(0, 1);       // Fan
 
     while(true){                    // Alternately set the PWM duty cycle to pwmValue1 and pwmValue2, Half-period delay
       ledcWrite(0, pwmValue1*8);
+      ledcWrite(1, pwmValue2*8);
       delayMicroseconds(1000000 / (blinkFrequency)); 
     }
  
@@ -75,6 +79,7 @@ void loop() {
 
       dmx_read(dmxPort, data, packet.size);
       pwmValue1 = data[512];
+      pwmValue2 = data[511];
 
       if (now - lastUpdate > 1000) {
         //sleep(250);
@@ -85,7 +90,7 @@ void loop() {
         }
 
         /* Print the received start code - it's usually 0. */
-        Serial.printf("%i Start code is 0x%02X and slot 1 is 0x%02X and temp is %f\n", lastUpdate, data[0], data[512],temperatureData*0.125);
+        Serial.printf("time:%i,dmx_fan:%02X,dmx_val:%02X,temp:%f\n", lastUpdate, data[511], data[512],temperatureData*0.125);
         lastUpdate = now;
         
       }
