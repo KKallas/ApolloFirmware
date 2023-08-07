@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <esp_dmx.h>
+#include <Wire.h>
 
 const int taskCore = 0;
 const int pwmPin = 4;
@@ -15,7 +16,6 @@ unsigned long lastUpdate = millis();
 
 int pwmValue1 = 0;
 
-
 void ColorUpdate( void * pvParameters ){
  
     String taskMessage = "Running color updater on: ";
@@ -25,7 +25,7 @@ void ColorUpdate( void * pvParameters ){
     ledcAttachPin(pwmPin, 0);       // Attach PWM to IO4 (Channel 0)
 
     while(true){                    // Alternately set the PWM duty cycle to pwmValue1 and pwmValue2, Half-period delay
-      ledcWrite(0, pwmValue1);
+      ledcWrite(0, pwmValue1*8);
       delayMicroseconds(1000000 / (blinkFrequency)); 
     }
  
@@ -41,9 +41,11 @@ void setup() {
   pinMode(27, OUTPUT);              // Set IO27 as output
   digitalWrite(27, HIGH);           // Enable output on IO27 (set it to HIGH)  
 
-  dmx_set_pin(dmxPort, -1, 22, -1);
+  dmx_set_pin(dmxPort, -1, 26, -1);
   dmx_driver_install(dmxPort, DMX_DEFAULT_INTR_FLAGS);
  
+  Wire.begin(23,22);                     // As we aure using default pins 21 & 22
+
   xTaskCreatePinnedToCore(
                     ColorUpdate,    // Function to implement the task
                     "ColorUpdate",  // Name of the task
@@ -59,6 +61,8 @@ void setup() {
  
 void loop() {
   // Get the DMX value to debug
+  int temperatureData;
+  int bytesAvailable;
   dmx_packet_t packet;
   if (dmx_receive(dmxPort, &packet, DMX_TIMEOUT_TICK)) {
     unsigned long now = millis();
@@ -73,9 +77,17 @@ void loop() {
       pwmValue1 = data[512];
 
       if (now - lastUpdate > 1000) {
+        //sleep(250);
+        Wire.requestFrom(78,2);
+        while(Wire.available()) {
+          temperatureData = (Wire.read() << 8) | Wire.read();
+          temperatureData = temperatureData >> 5;
+        }
+
         /* Print the received start code - it's usually 0. */
-        Serial.printf("%i Start code is 0x%02X and slot 1 is 0x%02X\n", lastUpdate, data[0], data[512]);
+        Serial.printf("%i Start code is 0x%02X and slot 1 is 0x%02X and temp is %f\n", lastUpdate, data[0], data[512],temperatureData*0.125);
         lastUpdate = now;
+        
       }
     } 
     else {
