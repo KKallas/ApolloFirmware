@@ -38,14 +38,34 @@ void ColorUpdate( void * pvParameters ){
     ledcAttachPin(0, 4);            // Fan IO0
 
     while(true){
-      ledcWrite(0, pwmValueRed);
+      int compRedVal = calculateRedColor(pwmValueRed, currentTempData>>3);
+      ledcWrite(0, compRedVal);
       ledcWrite(1, pwmValueGreen);
       ledcWrite(2, pwmValueBlue);
       ledcWrite(3, pwmValueWhite);
-      ledcWrite(4, pwmValueFan);
+      ledcWrite(4, pwmValueFan*8);
       delayMicroseconds(1000000 / (blinkFrequency)); 
     }
  
+}
+
+int calculateRedColor(uint redColor, uint temperature) {
+    // Calculation on 16bit out 11bit
+    // 85C on max = 2047
+    // @30 on 0.66 = 1351
+    // @-25 on 0.33 = 676
+    uint tempOffset = 85-temperature;
+    uint tempCompen = 65535-(tempOffset*395);
+
+    // lookat map
+
+    // Adjust the red color value based on the provided redColor parameter
+    uint redColorValue = (tempCompen * (redColor << 5));
+    redColorValue = redColorValue >> 16;
+    redColorValue = redColorValue >> 5;
+    //Serial.print(redColorValue,DEC);
+    //Serial.print("\n");
+    return (uint)redColorValue;
 }
  
 void setup() {
@@ -80,7 +100,6 @@ void loop() {
       currentTempData = temperatureData;
     }
 
-    /* Print the received start code - it's usually 0. */
     //Serial.printf("time:%i,dmx_fan:%02X,dmx_val:%02X,temp:%f\n", lastUpdate, data[511], data[512],temperatureData*0.125);
     //Serial.printf("time:%i\n", lastUpdate);
     lastUpdate = now;
@@ -130,7 +149,7 @@ void HandleUartCmd() {
       // Fan
       Fan = receivedChars[9];
 
-      Serial.printf("\"red_val\":%X,\"green_val\":%X,\"blue_val\":%X,\"white_val\":%X,\"fan_val\":%X,\"temp\":%f\n", IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite, Fan, currentTempData*0.125);
+      Serial.printf("\"red_val\":%i,\"green_val\":%i,\"blue_val\":%i,\"white_val\":%i,\"fan_val\":%i,\"temp\":%f\n", IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite, Fan, currentTempData*0.125);
       //Serial.printf("dmx_fan:%01X,temp:%f\n", Fan, currentTempData*0.125);
 
       pwmValueRed = IntensityRed;
