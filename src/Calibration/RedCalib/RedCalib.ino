@@ -2,21 +2,21 @@
 #include <esp_dmx.h>
 #include <Wire.h>
 
-const int taskCore = 0;
-const int pwmPin = 21;
-const int pwmFrequency = 20000;     // 20 kHz
-const int pwmResolution = 11;       // 11-bit resolution (2048 levels)
-const int blinkFrequency = 200;
+const uint taskCore = 0;
+const uint pwmPin = 21;
+const uint pwmFrequency = 20000;     // 20 kHz
+const uint pwmResolution = 11;       // 11-bit resolution (2048 levels)
+const uint blinkFrequency = 200;
 
 unsigned long lastUpdate = millis();
 unsigned long now = millis();
 
-int pwmValueRed = 0;
-int pwmValueGreen = 0;
-int pwmValueBlue = 0;
-int pwmValueWhite = 0;
-int pwmValueFan = 0;
-int currentTempData = 0;
+uint pwmValueRed = 0;
+uint pwmValueGreen = 0;
+uint pwmValueBlue = 0;
+uint pwmValueWhite = 0;
+uint pwmValueFan = 0;
+uint currentTempData = 0;
 
 char receivedChars[64];             // an array to store the received UART data
 boolean newData = false;            // if all characters until newline are recieved
@@ -60,11 +60,9 @@ int calculateRedColor(uint redColor, uint temperature) {
     // lookat map
 
     // Adjust the red color value based on the provided redColor parameter
-    uint redColorValue = (tempCompen * (redColor << 5));
-    redColorValue = redColorValue >> 16;
-    redColorValue = redColorValue >> 5;
-    //Serial.print(redColorValue,DEC);
-    //Serial.print("\n");
+    uint redColorValue = (tempCompen * (redColor << 5)); // 16bit theorticalMax*actualValue
+    redColorValue = redColorValue >> 16;                 // devide by 65K to normalize the answer
+    redColorValue = redColorValue >> 5;                  // downscale to 11bits
     return (uint)redColorValue;
 }
  
@@ -75,7 +73,7 @@ void setup() {
   pinMode(27, OUTPUT);              // Set IO27 as output
   digitalWrite(27, HIGH);           // Enable output on IO27 (set it to HIGH)  
  
-  Wire.begin(23,22);                // As we aure using default pins 21 & 22
+  Wire.begin(23,22);                // Wire needs always 2 pins
 
   xTaskCreatePinnedToCore(
                     ColorUpdate,    // Function to implement the task
@@ -98,6 +96,8 @@ void loop() {
       temperatureData = (Wire.read() << 8) | Wire.read();
       temperatureData = temperatureData >> 5;
       currentTempData = temperatureData;
+
+      //Serial.print("ping\n");
     }
 
     //Serial.printf("time:%i,dmx_fan:%02X,dmx_val:%02X,temp:%f\n", lastUpdate, data[511], data[512],temperatureData*0.125);
@@ -108,6 +108,8 @@ void loop() {
   // Add loop to handle UART input and output
   RecvUart();
   HandleUartCmd();
+  
+  sleep(0.001);
 }
 
 void RecvUart() {
@@ -116,14 +118,17 @@ void RecvUart() {
   char rc;
  
   while (Serial.available() > 0 && newData == false) {
+    char lastChar;
     rc = Serial.read();
 
-    if (rc != endMarker) {
+    if ((lastChar != '*' ) && (rc != endMarker)) {
       receivedChars[ndx] = rc;
+      lastChar = rc;
       ndx++;
       if (ndx >= 64) {
         ndx = 64 - 1;
       }
+      Serial.print(rc);
     }
     else {
       receivedChars[ndx] = '\0'; // terminate the string
@@ -134,8 +139,8 @@ void RecvUart() {
 }
 
 void HandleUartCmd() {
-    int IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite;
-    int Fan;
+    uint IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite;
+    uint Fan;
 
     if (newData == true && receivedChars[0] == 'A') {
       // Red Channel
@@ -149,7 +154,7 @@ void HandleUartCmd() {
       // Fan
       Fan = receivedChars[9];
 
-      Serial.printf("\"red_val\":%i,\"green_val\":%i,\"blue_val\":%i,\"white_val\":%i,\"fan_val\":%i,\"temp\":%f\n", IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite, Fan, currentTempData*0.125);
+      Serial.printf("\"red_val\":%i,\"green_val\":%i,\"blue_val\":%i,\"white_val\":%i,\"fan_val\":%i,\"temp\":%f*\n", IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite, Fan, currentTempData*0.125);
       //Serial.printf("dmx_fan:%01X,temp:%f\n", Fan, currentTempData*0.125);
 
       pwmValueRed = IntensityRed;
@@ -159,10 +164,34 @@ void HandleUartCmd() {
       pwmValueFan = Fan;
       
       newData = false;
+    }
+    if (newData == true && receivedChars[0] == 'D') {
+      // Red Channel
+      IntensityRed = twoByteChar(0,2);
+      // Green Channel
+      IntensityGreen = twoByteChar(0,0);
+      // Blue Channel
+      IntensityBlue = twoByteChar(0,0);
+      // White Channel
+      IntensityWhite = twoByteChar(0,0);
+      // Fan
+      Fan = 0x88;
+
+      Serial.printf("\"red_val\":%i,\"green_val\":%i,\"blue_val\":%i,\"white_val\":%i,\"fan_val\":%i,\"temp\":%f*\n", IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite, Fan, currentTempData*0.125);
+      //Serial.printf("dmx_fan:%01X,temp:%f\n", Fan, currentTempData*0.125);
+
+      pwmValueRed = IntensityRed;
+      pwmValueGreen = IntensityGreen;
+      pwmValueBlue = IntensityBlue;
+      pwmValueWhite = IntensityWhite;
+      pwmValueFan = Fan;
+      
+      newData = false;
+    }
   }
-}
+
 
 int twoByteChar(char byte1,char byte2) {
-  int output = ((int)byte1 << 8) | (int)(byte2 & 0xFF);
+  uint output = ((uint)byte1 << 8) | (uint)(byte2 & 0xFF);
   return(output);
 }

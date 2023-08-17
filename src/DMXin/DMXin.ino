@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <esp_dmx.h>
 
-int receivePin = 15;
+int receivePin = 26;
 dmx_port_t dmxPort = 1;
 byte data[DMX_PACKET_SIZE];
 bool dmxIsConnected = false;
