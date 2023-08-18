@@ -6,16 +6,18 @@ const uint taskCore = 0;
 const uint pwmPin = 21;
 unsigned long lastUpdate = millis();
 unsigned long now = millis();
-                                     // LIGHT
-const uint pwmFrequency = 20000;     // 20 kHz
-const uint pwmResolution = 11;       // 11-bit resolution (2048 levels)
-const uint blinkFrequency = 200;     // Update rate
-uint pwmValueRed = 0;                // Per channel data
+                                    // LIGHT
+const uint pwmFrequency = 20000;    // 20 kHz
+const uint pwmResolution = 11;      // 11-bit resolution (2048 levels)
+const uint blinkFrequency = 200;    // Update rate
+uint pwmValueRed = 0;               // Per channel data
 uint pwmValueGreen = 0;
 uint pwmValueBlue = 0;
 uint pwmValueWhite = 0;
 uint pwmValueFan = 0;
-uint currentTempData = 0;
+uint currentTempData = 0;           // Temp sensor data RAW (multiply by 0.125 to get Celsius)
+uint TempArray[5] = {200, 200, 200, 200, 200}; // Initialize with default value 25*8 temp sensor RAW value
+
                                     // UART
 char UartReceivedChars[64];         // an array to store the received UART data
 boolean UartNewData = false;        // if all characters until newline are recieved
@@ -33,10 +35,10 @@ void ColorUpdate( void * pvParameters ){
     taskMessage = taskMessage + xPortGetCoreID();
 
     ledcSetup(0, pwmFrequency, pwmResolution); // Configure PWM
-    ledcSetup(1, pwmFrequency, pwmResolution); // Configure PWM
-    ledcSetup(2, pwmFrequency, pwmResolution); // Configure PWM
-    ledcSetup(3, pwmFrequency, pwmResolution); // Configure PWM
-    ledcSetup(4, pwmFrequency, pwmResolution); // Configure PWM
+    ledcSetup(1, pwmFrequency, pwmResolution); 
+    ledcSetup(2, pwmFrequency, pwmResolution); 
+    ledcSetup(3, pwmFrequency, pwmResolution); 
+    ledcSetup(4, pwmFrequency, pwmResolution); 
     ledcAttachPin(21, 0);           // Attach PWM to IO21 (Red Channel)
     ledcAttachPin(19, 1);           // Attach PWM to IO19 (Green Channel) 
     ledcAttachPin(18, 2);           // Attach PWM to IO18 (Blue Channel)
@@ -122,25 +124,15 @@ void loop() {
     } 
   }
 
-
-  int temperatureData;
   int bytesAvailable;
   now = millis();
 
   if (now - lastUpdate > 1000) {
-    Wire.requestFrom(78,2);
-    while(Wire.available()) {
-      temperatureData = (Wire.read() << 8) | Wire.read();
-      temperatureData = temperatureData >> 5;
-      currentTempData = temperatureData;
-
-      //Serial.print("ping\n");
-    }
-
+    // TODO: Read temp
+    
     //Serial.printf("time:%i,dmx_fan:%02X,dmx_val:%02X,temp:%f\n", lastUpdate, data[511], data[512],temperatureData*0.125);
     //Serial.printf("time:%i\n", lastUpdate);
     lastUpdate = now;
-    
   }
   // Add loop to handle UART input and output
   RecvUart();
@@ -180,53 +172,73 @@ void HandleUartCmd() {
     uint Fan;
 
     if (UartNewData == true && UartReceivedChars[0] == 'A') {
-      // Red Channel
-      IntensityRed = twoByteChar(UartReceivedChars[1],UartReceivedChars[2]);
-      // Green Channel
+      // Color Channels (R,G,B,W)
+      IntensityRed   = twoByteChar(UartReceivedChars[1],UartReceivedChars[2]);
       IntensityGreen = twoByteChar(UartReceivedChars[3],UartReceivedChars[4]);
-      // Blue Channel
-      IntensityBlue = twoByteChar(UartReceivedChars[5],UartReceivedChars[6]);
-      // White Channel
+      IntensityBlue  = twoByteChar(UartReceivedChars[5],UartReceivedChars[6]);
       IntensityWhite = twoByteChar(UartReceivedChars[7],UartReceivedChars[8]);
       // Fan
       Fan = UartReceivedChars[9];
 
+      // UART answer
       Serial.printf("\"red_val\":%i,\"green_val\":%i,\"blue_val\":%i,\"white_val\":%i,\"fan_val\":%i,\"temp\":%f*\n", IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite, Fan, currentTempData*0.125);
       //Serial.printf("dmx_fan:%01X,temp:%f\n", Fan, currentTempData*0.125);
 
-      pwmValueRed = IntensityRed;
+      pwmValueRed   = IntensityRed;
       pwmValueGreen = IntensityGreen;
-      pwmValueBlue = IntensityBlue;
+      pwmValueBlue  = IntensityBlue;
       pwmValueWhite = IntensityWhite;
-      pwmValueFan = Fan;
+      pwmValueFan   = Fan;
       
       UartNewData = false;
     }
     if (UartNewData == true && UartReceivedChars[0] == 'D') {
-      // Red Channel
-      IntensityRed = twoByteChar(0,2);
-      // Green Channel
-      IntensityGreen = twoByteChar(0,0);
-      // Blue Channel
-      IntensityBlue = twoByteChar(0,0);
-      // White Channel
-      IntensityWhite = twoByteChar(0,0);
+      // Color Channels (R,G,B,W)
+      IntensityRed   = twoByteChar(0,1);
+      IntensityGreen = twoByteChar(0,1);
+      IntensityBlue  = twoByteChar(0,1);
+      IntensityWhite = twoByteChar(0,1);
       // Fan
       Fan = 0x88;
 
       Serial.printf("\"red_val\":%i,\"green_val\":%i,\"blue_val\":%i,\"white_val\":%i,\"fan_val\":%i,\"temp\":%f*\n", IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite, Fan, currentTempData*0.125);
-      //Serial.printf("dmx_fan:%01X,temp:%f\n", Fan, currentTempData*0.125);
 
-      pwmValueRed = IntensityRed;
+      pwmValueRed   = IntensityRed;
       pwmValueGreen = IntensityGreen;
-      pwmValueBlue = IntensityBlue;
+      pwmValueBlue  = IntensityBlue;
       pwmValueWhite = IntensityWhite;
-      pwmValueFan = Fan;
+      pwmValueFan   = Fan;
       
       UartNewData = false;
     }
   }
 
+uint readTemp() {
+  int temperatureData;
+
+  Wire.requestFrom(78,2);
+  while(Wire.available()) {
+    temperatureData = (Wire.read() << 8) | Wire.read();  // fill out 2 bytes from I2C comm
+    temperatureData = temperatureData >> 5;              // adjust to 11 bit value
+    insertIntoTempArray(temperatureData);
+    return TempArray[2];                                 // return the middle item to avoid extremes
+  }
+}
+
+void insertIntoTempArray(int newValue) {
+  // Find the position to insert the new value
+  int insertIndex = 4;    // Start from the last position (Arry len 5)
+  
+  while (insertIndex >= 0 && newValue < TempArray[insertIndex]) {
+    if (insertIndex < 4) {
+      TempArray[insertIndex + 1] = TempArray[insertIndex]; // Shift elements to the right
+    }
+    insertIndex--;
+  }
+  
+  // Insert the new value at the correct position
+  TempArray[insertIndex + 1] = newValue;
+}
 
 int twoByteChar(char byte1,char byte2) {
   uint output = ((uint)byte1 << 8) | (uint)(byte2 & 0xFF);
