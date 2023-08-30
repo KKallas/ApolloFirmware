@@ -1,4 +1,12 @@
-
+/**
+ * Reads temperature data from an I2C device and inserts it into the TempArray.
+ *
+ * This function communicates with an I2C device to retrieve temperature data, typically from an LM75 sensor.
+ * It requests 2 bytes of data from the device and then combines them to form a 16-bit temperature value.
+ * The value is then shifted to adjust it to an 11-bit format, suitable for further processing.
+ * The adjusted temperature value is then inserted into the TempArray using the insertIntoTempArray function.
+ * This function is typically called periodically to update the temperature data and maintain a record of it.
+ */
 void readTemp() {
   int temperatureData;
 
@@ -10,6 +18,17 @@ void readTemp() {
   }
 }
 
+/**
+ * Inserts a new temperature value into the circular TempArray and find currentTempData.
+ *
+ * This function updates the TempArray with a new temperature value using a round-robin buffer mechanism.
+ * Additionally, it maintains a sorted copy of the TempArray to efficiently find the middle value. The
+ * TempArray is managed in a circular manner. When a new value is added, the array is copied and sorted.
+ * The middle value from the sorted array is then assigned to the global variable currentTempData.
+ * This filtering approach helps mitigate the impact of occasional erratic readings from the LM75 sensor.
+ *
+ * @param newValue The new temperature value to be inserted into the TempArray.
+ */
 void insertIntoTempArray(int newValue) {
   TempArray[nextTempArrayPos] = newValue;                // Round robin buffer to record temp values
   nextTempArrayPos++;
