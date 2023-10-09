@@ -10,7 +10,7 @@ unsigned long now = millis();
 const uint pwmFrequency = 20000;    // 20 kHz
 const uint pwmResolution = 11;      // 11-bit resolution (2048 levels)
 const uint blinkFrequency = 200;    // Update rate
-int redPwmValue   = 0;             // Per channel output
+int redPwmValue   = 0;              // Per channel output
 int greenPwmValue = 0;
 int bluePwmValue  = 0;
 int whitePwmValue = 0;
@@ -18,7 +18,7 @@ int fanPwmValue   = 0;
 
 
 const uint STEPS   = 50;
-int redTarget     = 0;             // Next value after interpolation
+int redTarget     = 0;              // Next value after interpolation
 int greenTarget   = 0;
 int blueTarget    = 0;
 int whiteTarget   = 0;
