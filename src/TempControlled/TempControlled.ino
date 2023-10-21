@@ -1,10 +1,3 @@
-//A 900 1900 260 2000 0 0
-
-//cree
-// white only 15K lux, 39W
-
-// punane kanal ei tööta kui 1600 input @ 30,125C
-
 #include <Arduino.h>
 #include <esp_dmx.h>
 #include <Wire.h>
@@ -21,31 +14,34 @@ const int blinkFrequency = 200;    // Update rate
 const int STEPS          = 50;     // Interpolation setps 1/200*steps = interpolation time in seconds
 
 
-uint pwmValueRed    = 0;           // Per channel data
-uint pwmValueGreen  = 0;
-uint pwmValueBlue   = 0;
-uint pwmValueWhite  = 0;
-uint pwmValueFan    = 0;
+int pwmValueRed    = 0;           // Per channel data (do these need to be uint?)
+int pwmValueGreen  = 0;
+int pwmValueBlue   = 0;
+int pwmValueWhite  = 0;
 
-int red11bit = 0;
+int compRedVal = 0;
 
 int targetValueRed   = 0;          // Point chaser variable (currently using just fan)
 int targetValueGreen = 0;
 int targetValueBlue  = 0;
 int targetValueWhite = 0;
-int targetValueFan   = 0;
 
 int stepRed   = 0;
 int stepGreen = 0;
 int stepBlue  = 0;
 int stepWhite = 0;
-int stepFan   = 0;
 
-int currentTempData = 0;           // Temp sensor data RAW (multiply by 0.125 to get Celsius)
-int targetTempData  = 250;//560;         // Temp we are aiming to keep the lamp in (200-640) val*0.125 = temp in Celsius
+                                    // TEMPERATURE
+int currentTempData = 0;            // Temp sensor data RAW (multiply by 0.125 to get Celsius)
 int TempArray[5] = {200, 200, 200, 200, 200}; // Initialize with default value 25*8 temp sensor RAW value
 int nextTempArrayPos = 0;
 int sortedArray[5]; 
+bool overheated;
+                                    // FAN
+int FanSpeed = 0;
+int FanSpeedStep = 128;
+int targetTempData  = 520;          // Temp we are aiming to keep the lamp in (200-640) val*0.125 = temp in Celsius
+int pwmValueFan  = 0;
 
                                     // UART
 char UartReceivedChars[64];         // an array to store the received UART data
@@ -57,6 +53,14 @@ int DmxOffset = 0;                  // Offset from 512 addresses
 dmx_port_t DmxPort = 1;             // Built in serial port HW
 byte DmxData[DMX_PACKET_SIZE];      // DMX packet buffer
 bool DmxIsConnected = false;        // Connected Flag
+
+                                    // Calibration                            
+int current_calibration_A[4] = {0, 0, 0, 0};
+int current_calibration_B[4] = {0, 0, 0, 0};
+int current_calibration_mixed[4] = {0, 0, 0, 0};
+int intesity_list[9]     = {0, 1, 36, 73, 109, 145, 181,  218,  255}; 
+int intesity_list_log[9] = {0, 1, 32, 64, 128, 256, 512, 1024, 2048};
+int wb_index_list[6] = {0,14,71,100,178,255}; 
 
 void ColorUpdate( void * pvParameters ){
  
@@ -75,17 +79,24 @@ void ColorUpdate( void * pvParameters ){
     ledcAttachPin(0, 4);            // Fan IO0
 
     while(true){
-      // Red calibartion for flux loss at high temperature, pad temp data from 11 bits to 16 bits
-      int compRedVal = calculateRedColor(pwmValueRed, currentTempData>>3);
-      // Point Chaser interpolations
-      // pwmValueFan = updateChannel(pwmValueFan,targetValueFan,stepFan);
-      red11bit = compRedVal << 5;
-      // Set Color
-      ledcWrite(0, red11bit);
-      ledcWrite(1, pwmValueGreen);
-      ledcWrite(2, pwmValueBlue);
-      ledcWrite(3, pwmValueWhite);
-      ledcWrite(4, pwmValueFan);
+      if (overheated == false) {    // Overheting protection
+        // Red calibartion for flux loss at high temperature, pad temp data from 11 bits to 16 bits
+        compRedVal = calculateRedColor(pwmValueRed, currentTempData>>3, false);
+        // Point Chaser interpolations
+        // pwmValueFan = updateChannel(pwmValueFan,targetValueFan,stepFan);
+        // Set Color
+        ledcWrite(0, compRedVal);
+        ledcWrite(1, pwmValueGreen);
+        ledcWrite(2, pwmValueBlue);
+        ledcWrite(3, pwmValueWhite);
+        ledcWrite(4, pwmValueFan);
+      } else {
+        ledcWrite(0, 0);
+        ledcWrite(1, 0);
+        ledcWrite(2, 0);
+        ledcWrite(3, 0);
+        ledcWrite(4, 2047);
+      }
       // Wait for next update
       delayMicroseconds(1000000 / (blinkFrequency)); 
     }
@@ -131,7 +142,6 @@ void setup() {
 void loop() {
   dmx_packet_t packet;
 
-  // TODO: dmx_recioeve
   if (dmx_receive(DmxPort, &packet, DMX_TIMEOUT_TICK)) {
     if (!packet.err) {
       if (!DmxIsConnected) {
@@ -158,9 +168,9 @@ void loop() {
   int bytesAvailable;
   now = millis();
 
-  if (now - lastUpdate > 300) {
+  if (now - lastUpdate > 5000) {
     readTemp();
-    //updateFanSpeed();           
+    updateFanSpeed();           
     //Serial.printf("time:%i,dmx_fan:%02X,dmx_val:%02X,temp:%f\n", lastUpdate, data[511], data[512],temperatureData*0.125);
     //Serial.printf("time:%i\n", lastUpdate);
     //Serial.printf("TempArray:%i,%i,%i,%i,%i, valueSelected:%i\n", sortedArray[0], sortedArray[1], sortedArray[2], sortedArray[3], sortedArray[4], currentTempData);

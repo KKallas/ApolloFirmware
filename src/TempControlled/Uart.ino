@@ -44,49 +44,65 @@ void RecvUart() {
  *   - Prints the response to UART, including predefined values and current temperature.
  *   - Updates the corresponding color intensity values and fan intensity based on predefined values.
  * - For the 'T' command:
- *   - Prints the current temperature value to UART.
+ *   - For various testing purposes
  */
 void HandleUartCmd() {
   uint IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite, Fan;
+  int input_brightness, wb, redin, r_in, g_in, b_in, wb_in;
   if (UartNewData == true && UartReceivedChars[0] == 'A') {
-    // Color Channels (R,G,B,W)
+    // Color Channels (R,G,B,W, tempTarget)
     sscanf(UartReceivedChars, "A%i %i %i %i %i", &IntensityRed, &IntensityGreen, &IntensityBlue, &IntensityWhite, &Fan);
 
-    // UART answer
-    Serial.printf("\"red_val\":%i,\"green_val\":%i,\"blue_val\":%i,\"white_val\":%i,\"fan_val\":%i,\"temp\":%f*\n", red11bit, pwmValueGreen, pwmValueBlue, pwmValueWhite, pwmValueFan, currentTempData*0.125);
-    //Serial.printf("dmx_fan:%01X,temp:%f\n", Fan, currentTempData*0.125);
+    pwmValueRed    = IntensityRed;
+    pwmValueGreen  = IntensityGreen;
+    pwmValueBlue   = IntensityBlue;
+    pwmValueWhite  = IntensityWhite;
 
-    pwmValueRed   = IntensityRed;
-    pwmValueGreen = IntensityGreen;
-    pwmValueBlue  = IntensityBlue;
-    pwmValueWhite = IntensityWhite;
-    pwmValueFan   = Fan;
-    
+    // If no Fan value is provided then (codevalue 0) then use 65C
+    if (Fan == 0) {
+      Fan = 520;
+    } else {
+      targetTempData = map(Fan,1,256,30*8,80*8); // Temp range between 30-80C
+    }    
+  
+    // UART answer
+    Serial.printf("\"red_val\":%i,\"green_val\":%i,\"blue_val\":%i,\"white_val\":%i,\"fan_val\":%i,\"temp\":%f,\"target_temp_input\":%fC,\"targetTempData\":%fC*\n", compRedVal, pwmValueGreen, pwmValueBlue, pwmValueWhite, pwmValueFan, currentTempData*0.125, Fan*0.125, targetTempData*0.125);
     UartNewData = false;
   }
   if (UartNewData == true && UartReceivedChars[0] == 'D') {
-    pwmValueFan = updateChannel(pwmValueFan, targetValueFan, stepFan);
-    Serial.printf("\"targetValueFan\":%i,\"pwmValueFan\":%i,\"stepFan\":%i*\n", targetValueFan, pwmValueFan, stepFan);
-    Serial.printf("\"targetTempData\":%i,\"currentTempData\":%i*\n", targetTempData, currentTempData);
-    
-    UartNewData = false;
-  }
-  if (UartNewData == true && UartReceivedChars[0] == 'E') {
-    // Temp difference, use a step for 3 seconds
-    int tempDiff = targetTempData - currentTempData;
-    targetValueFan = targetValueFan + tempDiff;
-
-    stepFan = calculateStep(targetValueFan, pwmValueFan);
-    pwmValueFan = updateChannel(pwmValueFan, targetValueFan, stepFan);
-    Serial.printf("\"targetValueFan\":%i,\"pwmValueFan\":%i,\"stepFan\":%i*\n", targetValueFan, pwmValueFan, stepFan);
-    Serial.printf("\"targetTempData\":%i,\"currentTempData\":%i,\"tempDiff\":%i*\n", targetTempData, currentTempData, tempDiff);
-
+    Serial.printf("\"targetTempData\":%fC,\"currentTempData\":%fC,\"pwmValueFan\":%i,\"stepFan\":%i*\n", targetTempData*0.125, currentTempData*0.125, pwmValueFan, FanSpeedStep);
     
     UartNewData = false;
   }
   if (UartNewData == true && UartReceivedChars[0] == 'T') {
-    Serial.printf("temp:%i\n", currentTempData);
+    // Brightness
+    sscanf(UartReceivedChars, "T%i %i", &input_brightness, &wb);
+    update_calib(input_brightness, wb);
+    pwmValueRed = current_calibration_mixed[0];
+    pwmValueGreen = current_calibration_mixed[1];
+    pwmValueBlue = current_calibration_mixed[2];
+    pwmValueWhite = current_calibration_mixed[3];
 
+    Serial.printf("\"red\":%i,\"green\":%i,\"blue\":%i,\"white\":%i*\n", current_calibration_A[0],current_calibration_A[1],current_calibration_A[2],current_calibration_A[3]);
+    Serial.printf("\"mixed_red\":%i,\"mixed_green\":%i,\"mixed_blue\":%i,\"mixed_white\":%i*\n", current_calibration_mixed[0],current_calibration_mixed[1],current_calibration_mixed[2],current_calibration_mixed[3]);
+    UartNewData = false;
+  }
+  if (UartNewData == true && UartReceivedChars[0] == 'R') {
+    sscanf(UartReceivedChars, "R%i", &redin);
+    calculateRedColor(redin, currentTempData>>3, true);
+    Serial.printf("current temp data: %i\n", currentTempData>>3);
+
+    UartNewData = false;
+  }
+  if (UartNewData == true && UartReceivedChars[0] == 'I') {
+    sscanf(UartReceivedChars, "I%i %i %i %i", &r_in, &g_in, &b_in, &wb_in);
+    set_dmx(r_in, g_in, b_in, wb_in, 0);
+    pwmValueRed = current_calibration_mixed[0];
+    pwmValueGreen = current_calibration_mixed[1];
+    pwmValueBlue = current_calibration_mixed[2];
+    pwmValueWhite = current_calibration_mixed[3];
+    Serial.printf("\"mixed_red\":%i,\"mixed_green\":%i,\"mixed_blue\":%i,\"mixed_white\":%i*\n", current_calibration_mixed[0],current_calibration_mixed[1],current_calibration_mixed[2],current_calibration_mixed[3]);
+   
     UartNewData = false;
   }
 }

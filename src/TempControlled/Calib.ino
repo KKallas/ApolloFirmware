@@ -6,24 +6,27 @@
  * proportionally to the temperature difference from a reference temperature. The compensation is performed by altering the red color
  * value based on a theoretical maximum value, the actual red color value, and the temperature offset.
  *
- * @param redColor The original red color value (16-bit) to be compensated.
+ * @param redColor The original red color value (11-bit).
  * @param temperature The temperature value for which compensation is calculated.
  * @return The compensated red color value after temperature compensation (11-bit).
  */
-int calculateRedColor(int redColor, int temperature) {
+int calculateRedColor(int redColor, int temperature, bool debug) {
     // Calculation done in 16bit and output downsampled to 11bit
-    // 85C on max = 32767
-    // @30 on 0.66 = 21615
-    // @-25 on 0.33 = 10816
-    int tempOffset = 85-temperature;
-    int tempCompen = 32767-(tempOffset*198);
+    // 85C on max = 2047
+    // @30 on 0.66 = 1350
+    // @-25 on 0.33 = 676
+    const int intMaxVal = 2047;
+    const int minTemp = -55 * 8;  // -55°C converted to 1/8°C
+    const int maxTemp = 85 * 8;   // 85°C converted to 1/8°C
 
-    // lookat map
+    int scale = map(temperature,-25*8,maxTemp,676,intMaxVal);
+    int redColorValue = map(redColor,0,intMaxVal,0,scale);
 
-    // Adjust the red color value based on the provided redColor parameter
-    int redColorValue = (tempCompen * redColor); // 16bit theorticalMax*actualValue
-    redColorValue = redColorValue >> 16;                 // devide by 65K to normalize the answer
-    //redColorValue = redColorValue >> 5;                  // downscale to 11bits
-    return (int)redColorValue;
+    if(debug) {
+      Serial.printf("red scale: %i, red color: %i, ", scale, redColorValue);
+    }
+    return redColorValue;
 }
+
+
 

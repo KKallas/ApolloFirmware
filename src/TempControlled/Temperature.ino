@@ -42,29 +42,10 @@ void insertIntoTempArray(int newValue) {
   sortArray(sortedArray);
   
   currentTempData = sortedArray[2];                      // Pick the second smallest value as currentTempData
+  if (currentTempData > 85*8) {                          // 85C 0.125C one unit
+    overheated = true;
+  }          
 }
-
-
-// TempTarget if smaller then slow fan down a bit if higher speed fan up a bit once every 10 seconds?
-// I should split this into steps just like the interpüolated output
-void updateFanSpeed() {
-  int diff = currentTempData - targetTempData;
-  setFanSpeed(diff);
-  //Serial.printf("currTemp:%i,targetTemp:%i,fanTarget:%i,fanPwm:%i,fanStep:%i,diff:%i\n",currentTempData,targetTempData,targetValueFan,pwmValueFan,stepFan,diff);
-}
-
-void setFanSpeed(int inDiff) {
-  targetValueFan = targetValueFan + inDiff;
-  //Serial.printf("tt:%i\n",targetValueFan);
-  if (targetValueFan < 0) {
-    targetValueFan = 0;
-  } 
-  if (targetValueFan > 2047) {
-    targetValueFan = 2048;
-  }
-  stepFan = int(calculateStep(targetValueFan, pwmValueFan) / 16);
-}
-
 
 /**
  * Sorts an array of unsigned integers in ascending order using the selection sort algorithm.
