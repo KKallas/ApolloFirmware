@@ -2,6 +2,7 @@
 #include <esp_dmx.h>
 #include <Wire.h>
 #include <limits.h>
+#include <WiFi.h> // Only for MAC id
 
 const int taskCore = 0;
 const int pwmPin = 21;
@@ -129,14 +130,8 @@ void setup() {
                     NULL,           // Task handle.
                     taskCore);      // Core where the task should run
 
-  Serial.print("* Welcome to Apollo lamp to use the terminal:\n");
-  Serial.print("* - For the 'A' command:\n");
-  Serial.print("*   - Extracts color channel and fan intensity values from the UART data (A%i %i %i %i %i) -> RGBWF\n");
-  Serial.print("*   - Updates the corresponding color intensity values and fan intensity based on extracted values.\n");
-  Serial.print("* - For the 'D' command:\n");
-  Serial.print("*   - Sets predefined values for color channel and fan intensity.\n");
-  Serial.print("* - For the 'T' command:\n");
-  Serial.print("*   - Prints the current temperature value to Serial.\n");
+  Serial.print("Welcome to Apollo lamp to use the terminal\n");
+  Serial.print("A 0 0 0 0 0 (R,G,B,W,Ttarget), I 0 0 0 0 0 (R,G,B,Wb,Ttarget), M, T, D");
 }
  
 void loop() {
@@ -150,13 +145,26 @@ void loop() {
 
       // Read DMX and set the color values
       dmx_read(DmxPort, DmxData, packet.size);
-      pwmValueRed   = DmxData[1 + DmxOffset];
-      pwmValueGreen = DmxData[2 + DmxOffset];
-      pwmValueBlue  = DmxData[3 + DmxOffset];
-      pwmValueWhite = DmxData[4 + DmxOffset];
-      // DMX fan mode if 0 the 1024 else the actual value
-      int DmxFanValue = DmxData[5 + DmxOffset];
-      set_dmx(pwmValueRed, pwmValueGreen, pwmValueBlue, int wb_in, int temp_in)
+
+      // If no Fan value is provided then (codevalue 0) then use 65C
+      int Fan = DmxData[5 + DmxOffset];
+      if (Fan == 0) {
+        Fan = 520;
+      } else {
+        targetTempData = map(Fan,1,256,30*8,80*8); // Temp range between 30-80C
+      } 
+      
+      set_dmx(DmxData[1 + DmxOffset],
+              DmxData[2 + DmxOffset], 
+              DmxData[3 + DmxOffset], 
+              DmxData[4 + DmxOffset],
+              Fan);
+      
+      
+      pwmValueRed   = current_calibration_mixed[0];
+      pwmValueGreen = current_calibration_mixed[1];
+      pwmValueBlue  = current_calibration_mixed[2];
+      pwmValueWhite = current_calibration_mixed[3];
     } 
   }
 
@@ -175,4 +183,5 @@ void loop() {
   // Add loop to handle UART input and output
   RecvUart();
   HandleUartCmd();
+  usleep(10);
 }

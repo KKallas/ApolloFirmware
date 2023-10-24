@@ -72,26 +72,27 @@ int calibration_points[6][9][4] = {
 void update_calib(int intensity, int wb) {
   int int_index = findLastSmallerInt(intensity);
   int wb_index = findLastSmallerWb(wb);
-  Serial.printf("wb_index: %i\n",wb_index);
+  if (wb==0) {
+    wb_index=0;
+  }
 
   // Calibration A
+
+
+  for(int i = 0; i < 4; i++) {
+    current_calibration_A[i] = map(intensity, intesity_list[int_index], intesity_list[int_index + 1]-1, calibration_points[wb_index][int_index][i], calibration_points[wb_index][int_index + 1][i]);
+  }
   if (intensity == 0) {
     current_calibration_A[0] = calibration_points[wb_index][0][0];
     current_calibration_A[1] = calibration_points[wb_index][0][1];
     current_calibration_A[2] = calibration_points[wb_index][0][2];
     current_calibration_A[3] = calibration_points[wb_index][0][3];
-    return;
   }
   if (intensity == 255) {
     current_calibration_A[0] = calibration_points[wb_index][8][0];
     current_calibration_A[1] = calibration_points[wb_index][8][1];
     current_calibration_A[2] = calibration_points[wb_index][8][2];
     current_calibration_A[3] = calibration_points[wb_index][8][3];
-    return;
-  }
-
-  for(int i = 0; i < 4; i++) {
-    current_calibration_A[i] = map(intensity, intesity_list[int_index], intesity_list[int_index + 1], calibration_points[wb_index][int_index][i], calibration_points[wb_index][int_index + 1][i]);
   }
 
   // Calibration B
@@ -100,24 +101,22 @@ void update_calib(int intensity, int wb) {
     wb_index = 5;
   }
 
+  for(int i = 0; i < 4; i++) {
+    current_calibration_B[i] = map(intensity, intesity_list[int_index], intesity_list[int_index + 1]-1, calibration_points[wb_index][int_index][i], calibration_points[wb_index][int_index + 1][i]);
+  }
   if (intensity == 0) {
     current_calibration_B[0] = calibration_points[wb_index][0][0];
     current_calibration_B[1] = calibration_points[wb_index][0][1];
     current_calibration_B[2] = calibration_points[wb_index][0][2];
     current_calibration_B[3] = calibration_points[wb_index][0][3];
-    return;
   }
   if (intensity == 255) {
     current_calibration_B[0] = calibration_points[wb_index][8][0];
     current_calibration_B[1] = calibration_points[wb_index][8][1];
     current_calibration_B[2] = calibration_points[wb_index][8][2];
     current_calibration_B[3] = calibration_points[wb_index][8][3];
-    return;
   }
 
-  for(int i = 0; i < 4; i++) {
-    current_calibration_B[i] = map(intensity, intesity_list[int_index], intesity_list[int_index + 1], calibration_points[wb_index][int_index][i], calibration_points[wb_index][int_index + 1][i]);
-  }
 
   // 2800-3200-4800-5600-7800-10000 = 7200K
   // 0    400  2000 2800 5000 7200 
@@ -168,7 +167,6 @@ void set_dmx(int r_in, int g_in, int b_in, int wb_in, int temp_in) {
   }
 
   update_calib(lowest_value, wb_in);
-
   // Mix in the color
   // TODO convert the RGB gamma, use LUT instead of multiply
   current_calibration_mixed[0] = (r_in - lowest_value) * 8 + current_calibration_mixed[0];
