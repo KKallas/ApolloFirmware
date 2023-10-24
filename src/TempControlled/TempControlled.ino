@@ -150,18 +150,13 @@ void loop() {
 
       // Read DMX and set the color values
       dmx_read(DmxPort, DmxData, packet.size);
-      pwmValueRed   = DmxData[1 + DmxOffset]*8;
-      pwmValueGreen = DmxData[2 + DmxOffset]*8;
-      pwmValueBlue  = DmxData[3 + DmxOffset]*8;
-      pwmValueWhite = DmxData[4 + DmxOffset]*8;
+      pwmValueRed   = DmxData[1 + DmxOffset];
+      pwmValueGreen = DmxData[2 + DmxOffset];
+      pwmValueBlue  = DmxData[3 + DmxOffset];
+      pwmValueWhite = DmxData[4 + DmxOffset];
       // DMX fan mode if 0 the 1024 else the actual value
-      int DmxFanValue = DmxData[5 + DmxOffset]*8;
-      if (DmxFanValue == 0) {
-        pwmValueFan = 2048;
-      }
-      else {
-        pwmValueFan = DmxFanValue;
-      }
+      int DmxFanValue = DmxData[5 + DmxOffset];
+      set_dmx(pwmValueRed, pwmValueGreen, pwmValueBlue, int wb_in, int temp_in)
     } 
   }
 
