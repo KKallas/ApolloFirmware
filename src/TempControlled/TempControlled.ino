@@ -3,6 +3,7 @@
 #include <Wire.h>
 #include <limits.h>
 #include <WiFi.h> // Only for MAC id
+#include <EEPROM.h>
 
 const int taskCore = 0;
 const int pwmPin = 21;
@@ -63,6 +64,8 @@ int intesity_list[9]     = {0, 1, 36, 73, 109, 145, 181,  218,  255};
 int intesity_list_log[9] = {0, 1, 32, 64, 128, 256, 512, 1024, 2048};
 int wb_index_list[6] = {0,14,71,100,178,255}; 
 
+int calibration_points[6][9][4];
+
 void ColorUpdate( void * pvParameters ){
  
     String taskMessage = "Running color updater on: ";
@@ -82,7 +85,7 @@ void ColorUpdate( void * pvParameters ){
     while(true){
       if (overheated == false) {    // Overheting protection
         // Red calibartion for flux loss at high temperature, pad temp data from 11 bits to 16 bits
-        compRedVal = calculateRedColor(pwmValueRed, currentTempData>>3, false);
+        compRedVal = calculateRedColor(pwmValueRed, currentTempData, false);
         // Point Chaser interpolations
         // pwmValueFan = updateChannel(pwmValueFan,targetValueFan,stepFan);
         // Set Color
@@ -129,6 +132,9 @@ void setup() {
                     0,              // Priority of the task
                     NULL,           // Task handle.
                     taskCore);      // Core where the task should run
+  
+  EEPROM.begin(sizeof(calibration_points));
+  EEPROM.get(0, calibration_points);
 
   Serial.print("Welcome to Apollo lamp to use the terminal\n");
   Serial.print("A 0 0 0 0 0 (R,G,B,W,Ttarget), I 0 0 0 0 0 (R,G,B,Wb,Ttarget), M, T, D");
