@@ -50,6 +50,7 @@ void HandleUartCmd() {
   uint IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite, Fan;
   int input_brightness, wb, redin, r_in, g_in, b_in, w_in, wb_in, debug_red, debug_temp;
   int rgbw_in[4];
+  char dmx_in;
   if (UartNewData == true && UartReceivedChars[0] == 'A') {
     // Color Channels (R,G,B,W, tempTarget)
     sscanf(UartReceivedChars, "A%i %i %i %i %i", &IntensityRed, &IntensityGreen, &IntensityBlue, &IntensityWhite, &Fan);
@@ -92,7 +93,7 @@ void HandleUartCmd() {
     } else {
       targetTempData = map(Fan,1,256,30*8,80*8); // Temp range between 30-80C
     } 
-    Serial.printf("\"mixed_red\":%i,\"mixed_green\":%i,\"mixed_blue\":%i,\"mixed_white\":%i*\n", current_calibration_mixed[0],current_calibration_mixed[1],current_calibration_mixed[2],current_calibration_mixed[3]);
+    Serial.printf("\"mixed_red\":%i,\"mixed_green\":%i,\"mixed_blue\":%i,\"mixed_white\":%i,\"red_actual\":%i,\"lamp_temp\":%f,\"lamp_target\":%f,\"fan_speed\":%i*\n", current_calibration_mixed[0],current_calibration_mixed[1],current_calibration_mixed[2],current_calibration_mixed[3],compRedVal,currentTempData*0.125, targetTempData*0.125, pwmValueFan);
    
     UartNewData = false;
   }
@@ -102,7 +103,7 @@ void HandleUartCmd() {
     Serial.print("\"*\n");
     UartNewData = false;
   }
-  if (UartNewData == true && UartReceivedChars[0] == 'D') {
+  if (UartNewData == true && UartReceivedChars[0] == 'D' && UartReceivedChars[1] == ' ') {
     Serial.print("\"mac\":\"");
     Serial.print(WiFi.macAddress());
     Serial.print("\", ");
@@ -123,8 +124,21 @@ void HandleUartCmd() {
   
     UartNewData = false;
   }
+  if (UartNewData == true && UartReceivedChars[0] == 'D' && UartReceivedChars[1] == 'r') {
+    Serial.printf("\"dmx_offset\":%c \n", DmxOffset);
+    UartNewData = false;
+  }
+  if (UartNewData == true && UartReceivedChars[0] == 'D' && UartReceivedChars[1] == 'w') {
+    sscanf(UartReceivedChars, "Dw %c", &dmx_in);
+    DmxOffset = dmx_in;
+    Serial.printf("\"dmx_offset\":%c \n",DmxOffset);
+    EEPROM.put(sizeof(int)*9*4*6+1,dmx_in);
+    EEPROM.commit();
+
+    UartNewData = false;
+  }
   if (UartNewData == true && UartReceivedChars[0] == 'C' && UartReceivedChars[1] == 'w') {
-    sscanf(UartReceivedChars, "Cw%i %i %i %i %i %i", &wb, &input_brightness, &r_in, &g_in, &b_in, &w_in);
+    sscanf(UartReceivedChars, "Cw %i %i %i %i %i %i", &wb, &input_brightness, &r_in, &g_in, &b_in, &w_in);
 
     // Chek WB range
     if (wb < 0 || wb > 6) {

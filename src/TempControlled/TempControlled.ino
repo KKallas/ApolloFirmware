@@ -51,7 +51,7 @@ boolean UartNewData = false;        // if all characters until newline are recie
 
                                     // DMX
 const int DmxReceivePin = 26;       // ESP32 pin (SK led Pin)
-int DmxOffset = 0;                  // Offset from 512 addresses
+char DmxOffset;                 // Offset from 512 addresses
 dmx_port_t DmxPort = 1;             // Built in serial port HW
 byte DmxData[DMX_PACKET_SIZE];      // DMX packet buffer
 bool DmxIsConnected = false;        // Connected Flag
@@ -133,8 +133,9 @@ void setup() {
                     NULL,           // Task handle.
                     taskCore);      // Core where the task should run
   
-  EEPROM.begin(sizeof(calibration_points));
+  EEPROM.begin(sizeof(int)*9*4*6+16);
   EEPROM.get(0, calibration_points);
+  EEPROM.get(sizeof(int)*9*4*6+1,DmxOffset);
 
   Serial.print("Welcome to Apollo lamp to use the terminal\n");
   Serial.print("A 0 0 0 0 0 (R,G,B,W,Ttarget), I 0 0 0 0 0 (R,G,B,Wb,Ttarget), M, T, D");
