@@ -47,13 +47,13 @@ void RecvUart() {
  *   - Gets lamp mac id
  */
 void HandleUartCmd() {
-  uint IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite, Fan;
-  int input_brightness, wb, redin, r_in, g_in, b_in, w_in, wb_in, debug_red, debug_temp;
+  uint IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite;
+  int input_brightness, wb, redin, r_in, g_in, b_in, w_in, wb_in, debug_red, debug_temp, LampTemp;
   int rgbw_in[4];
   char dmx_in;
   if (UartNewData == true && UartReceivedChars[0] == 'A') {
     // Color Channels (R,G,B,W, tempTarget)
-    sscanf(UartReceivedChars, "A%i %i %i %i %i", &IntensityRed, &IntensityGreen, &IntensityBlue, &IntensityWhite, &Fan);
+    sscanf(UartReceivedChars, "A%i %i %i %i %i", &IntensityRed, &IntensityGreen, &IntensityBlue, &IntensityWhite, &LampTemp);
 
     pwmValueRed    = IntensityRed;
     pwmValueGreen  = IntensityGreen;
@@ -61,15 +61,15 @@ void HandleUartCmd() {
     pwmValueWhite  = IntensityWhite;
 
     // If no Fan value is provided then (codevalue 0) then use 65C
-    if (Fan == 0) {
-      Fan = 520;
+    if (LampTemp == 0) {
+      targetTempData = 520;
     } else {
-      targetTempData = map(Fan,1,256,30*8,80*8); // Temp range between 30-80C
+      targetTempData = map(LampTemp,1,256,30*8,80*8); // Temp range between 30-80C
     }    
   
     // UART answer
     delay(300);
-    Serial.printf("\"red_val\":%i,\"green_val\":%i,\"blue_val\":%i,\"white_val\":%i,\"fan_val\":%i,\"temp\":%f,\"target_temp_input\":%fC,\"targetTempData\":%fC*\n", compRedVal, pwmValueGreen, pwmValueBlue, pwmValueWhite, pwmValueFan, currentTempData*0.125, Fan*0.125, targetTempData*0.125);
+    Serial.printf("\"red_val\":%i,\"green_val\":%i,\"blue_val\":%i,\"white_val\":%i,\"fan_val\":%i,\"temp\":%f,\"target_temp_input\":%fC,\"targetTempData\":%fC*\n", compRedVal, pwmValueGreen, pwmValueBlue, pwmValueWhite, pwmValueFan, currentTempData*0.125, LampTemp*0.125, targetTempData*0.125);
     UartNewData = false;
   }
   if (UartNewData == true && UartReceivedChars[0] == 'T') {
@@ -80,7 +80,7 @@ void HandleUartCmd() {
     UartNewData = false;
   }
   if (UartNewData == true && UartReceivedChars[0] == 'I') {
-    sscanf(UartReceivedChars, "I%i %i %i %i %i %i", &r_in, &g_in, &b_in, &wb_in, &Fan);
+    sscanf(UartReceivedChars, "I%i %i %i %i %i %i", &r_in, &g_in, &b_in, &wb_in, &LampTemp);
     set_dmx(r_in, g_in, b_in, wb_in, 0);
     pwmValueRed = current_calibration_mixed[0];
     pwmValueGreen = current_calibration_mixed[1];
@@ -88,10 +88,10 @@ void HandleUartCmd() {
     pwmValueWhite = current_calibration_mixed[3];
     
     // If no Fan value is provided then (codevalue 0) then use 65C
-    if (Fan == 0) {
-      Fan = 520;
+    if (LampTemp == 0) {
+      targetTempData = 520;
     } else {
-      targetTempData = map(Fan,1,256,30*8,80*8); // Temp range between 30-80C
+      targetTempData = map(LampTemp,0,255,240,640); // Temp range between 30-80C
     } 
     Serial.printf("\"mixed_red\":%i,\"mixed_green\":%i,\"mixed_blue\":%i,\"mixed_white\":%i,\"red_actual\":%i,\"lamp_temp\":%f,\"lamp_target\":%f,\"fan_speed\":%i*\n", current_calibration_mixed[0],current_calibration_mixed[1],current_calibration_mixed[2],current_calibration_mixed[3],compRedVal,currentTempData*0.125, targetTempData*0.125, pwmValueFan);
    
