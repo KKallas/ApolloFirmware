@@ -8,7 +8,7 @@
  * [min]->[0, 1, 2, 3, 4, 5, 6, 7, 8]->[max] (maximum values according to whitebalance [2800-3200] corresponds to 10,000 lux, [4800-10000] to 20,000 lux).
  * 
  * The Kelvin value is mixed by selecting two RGBW values from the LUT closest to the 8-bit input (Cal A, Cal B, and Cal Mixed).
- * The white value is determined within a one-Kelvin range, based on the two closest brightness points to the input intensity.
+ * The white value is determined within a one-calibration-Kelvin range, based on the two closest brightness points to the input intensity.
  * 
  * 2800-3200-4800-5600-7800-10000 = 7200K (full range)
  * 0    400  2000 2800 5000 7200          (offset from 2800)
@@ -132,8 +132,10 @@ int findLastSmallerWb(int inputWb) {
   return lastIndex;
 }
 
+
 void set_dmx(int r_in, int g_in, int b_in, int wb_in, int temp_in) {
-  // TODO temp
+  // Make sure that red compensation is enabled, otherwise red output will drift based on lamp temperature
+  disable_red_comp = false;
   // Initialize lowest_value with r_in initially
   int lowest_value = r_in;
 
@@ -156,7 +158,7 @@ void set_dmx(int r_in, int g_in, int b_in, int wb_in, int temp_in) {
   else {
   update_calib(lowest_value, wb_in);
   // Mix in the color
-  // TODO convert the RGB gamma, use LUT instead of multiply
+  // TODO: convert the RGB gamma, use LUT instead of multiply
   current_calibration_mixed[0] = (r_in - lowest_value) * 8 + current_calibration_mixed[0];
   current_calibration_mixed[1] = (g_in - lowest_value) * 8 + current_calibration_mixed[1];
   current_calibration_mixed[2] = (b_in - lowest_value) * 8 + current_calibration_mixed[2];

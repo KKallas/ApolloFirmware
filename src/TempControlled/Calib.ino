@@ -10,23 +10,49 @@
  * @param temperature The temperature value for which compensation is calculated.
  * @return The compensated red color value after temperature compensation (11-bit).
  */
-int calculateRedColor(int redColor, int temperature, bool debug) {
-    // Calculation done in 16bit and output downsampled to 11bit
-    // 85C on max = 2047
-    // @30 on 0.66 = 1350
-    // @-25 on 0.33 = 676
-    const int intMaxVal = 2047;
-    const int minTemp = -55 * 8;  // -55°C converted to 1/8°C
-    const int maxTemp = 85 * 8;   // 85°C converted to 1/8°C
+int calculateRedColor(int redColor, int temperature) {
+  // Define temperature range and corresponding maxRed values
+  int temperature_range[] = {-160, -80, 0, 80, 160, 240, 320, 400, 480, 560, 640};
+  int maxRed_values[] = {1165, 1180, 1204, 1237, 1280, 1337, 1409, 1502, 1622, 1780, 1993};
 
-    int scale = map(temperature,-25*8,maxTemp,676,intMaxVal);
-    int redColorValue = map(redColor,0,intMaxVal,0,scale);
+  if (redColor == 0) {
+    return 0;
+  }
 
-    if(debug) {
-      Serial.printf("red scale: %i, red color: %i, ", scale, redColorValue);
+  if (temperature > 639) {
+    int scaled_redColor = map(redColor, 0, 2048, 0, 1993);
+    return scaled_redColor;
+  }
+
+  if (temperature < -159) {
+    int scaled_redColor = map(redColor, 0, 2048, 0, 1165);
+    return scaled_redColor;
+  }
+
+  // Find the closest lower temp point
+  int closest_temperature_index = 0;
+  for (int i = 1; i < 11; i++) {
+    if (temperature < temperature_range[i]) {
+      closest_temperature_index = i - 1; // Use the previous index
+      break;
     }
-    return redColorValue;
+  }
+
+  // Calculate max_val based on the closest lower temperature point
+  int max_val = map(temperature, temperature_range[closest_temperature_index], temperature_range[closest_temperature_index + 1], maxRed_values[closest_temperature_index], maxRed_values[closest_temperature_index + 1]);
+
+  // Scale the redColor using map
+  int scaled_redColor = map(redColor, 0, 2048, 0, max_val);
+  if (scaled_redColor == 0) {
+    scaled_redColor = 1;
+  }
+  return scaled_redColor;
 }
+
+
+
+
+
 
 
 

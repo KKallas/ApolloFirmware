@@ -65,6 +65,7 @@ int intesity_list_log[9] = {0, 1, 32, 64, 128, 256, 512, 1024, 2048};
 int wb_index_list[6] = {0,14,71,100,178,255}; 
 
 int calibration_points[6][9][4];
+bool disable_red_comp = false;
 
 void ColorUpdate( void * pvParameters ){
  
@@ -84,11 +85,18 @@ void ColorUpdate( void * pvParameters ){
 
     while(true){
       if (overheated == false) {    // Overheting protection
-        // Red calibartion for flux loss at high temperature, pad temp data from 11 bits to 16 bits
-        compRedVal = calculateRedColor(pwmValueRed, currentTempData, false);
-        // Point Chaser interpolations
+
+                                    // Red comp with disable option, all other than redcalib should set disable_red_comp = false;
+        if (disable_red_comp==true) {
+          compRedVal = pwmValueRed;
+        } else {
+          compRedVal = calculateRedColor(pwmValueRed, currentTempData);
+        }
+
+                                    // Point Chaser interpolations
         // pwmValueFan = updateChannel(pwmValueFan,targetValueFan,stepFan);
-        // Set Color
+
+                                    // Set Color
         ledcWrite(0, compRedVal);
         ledcWrite(1, pwmValueGreen);
         ledcWrite(2, pwmValueBlue);
@@ -138,9 +146,9 @@ void setup() {
   EEPROM.get(sizeof(int)*9*4*6+1,DmxOffset);
 
   Serial.print("Welcome to Apollo lamp to use the terminal\n");
-  Serial.print("A 0 0 0 0 0 (R,G,B,W,Ttarget), I 0 0 0 0 0 (R,G,B,Wb,Ttarget), M, T, D");
+  Serial.print("A 0 0 0 0 0 (R,G,B,W,Ttarget), I 0 0 0 0 0 (R,G,B,Wb,Ttarget), M, T, D\n\n\n");
 }
- 
+
 void loop() {
   dmx_packet_t packet;
 
