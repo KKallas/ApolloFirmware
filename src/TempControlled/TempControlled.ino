@@ -169,6 +169,7 @@ void loop() {
         targetTempData = map(Fan,1,256,30*8,80*8); // Temp range between 30-80C
       } 
       
+      /*
       set_dmx(DmxData[1 + DmxOffset],
               DmxData[2 + DmxOffset], 
               DmxData[3 + DmxOffset], 
@@ -180,6 +181,11 @@ void loop() {
       pwmValueGreen = current_calibration_mixed[1];
       pwmValueBlue  = current_calibration_mixed[2];
       pwmValueWhite = current_calibration_mixed[3];
+      */
+      pwmValueRed    = DmxData[1 + DmxOffset];
+      pwmValueGreen  = DmxData[2 + DmxOffset];
+      pwmValueBlue   = DmxData[3 + DmxOffset];
+      pwmValueWhite  = DmxData[4 + DmxOffset];
     } 
   }
 

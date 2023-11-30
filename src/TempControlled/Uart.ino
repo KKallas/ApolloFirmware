@@ -108,6 +108,8 @@ void HandleUartCmd() {
     Serial.print(WiFi.macAddress());
     Serial.print("\", ");
 
+    Serial.print("\"Version\":20231130,"); //reversed europen date
+
     Serial.printf("\"tempC\":%f,", currentTempData*0.125);
     Serial.printf("\"tempTargetC\":%f,", targetTempData*0.125);
     Serial.printf("\"fanSpeed\":%i,", pwmValueFan);
@@ -118,8 +120,8 @@ void HandleUartCmd() {
     Serial.printf("\"DmxWb\":%i,", DmxData[4 + DmxOffset]);
     Serial.printf("\"DmxTempTarget\":%i,", DmxData[5 + DmxOffset]);
 
-    Serial.printf("\"calA\":(%i, %i, %i, %i) ", current_calibration_A[0], current_calibration_A[1], current_calibration_A[2], current_calibration_A[3]);
-    Serial.printf("\"calB\":(%i, %i, %i, %i) ", current_calibration_B[0],  current_calibration_B[1],  current_calibration_B[2],  current_calibration_B[3]);
+    Serial.printf("\"calA\":(%i, %i, %i, %i), ", current_calibration_A[0], current_calibration_A[1], current_calibration_A[2], current_calibration_A[3]);
+    Serial.printf("\"calB\":(%i, %i, %i, %i), ", current_calibration_B[0],  current_calibration_B[1],  current_calibration_B[2],  current_calibration_B[3]);
     Serial.printf("\"calMixed\":(%i,%i,%i,%i)\n", current_calibration_mixed[0], current_calibration_mixed[1], current_calibration_mixed[2], current_calibration_mixed[3]);
   
     UartNewData = false;
