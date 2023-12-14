@@ -48,6 +48,9 @@ int pwmValueFan  = 0;
                                     // UART
 char UartReceivedChars[64];         // an array to store the received UART data
 boolean UartNewData = false;        // if all characters until newline are recieved
+const int storedLutSize = sizeof(int)*9*4*6;
+const int storedArtnetOffsetSize = 16;
+const int storedRgbwSize = 4*16;
 
                                     // DMX
 const int DmxReceivePin = 26;       // ESP32 pin (SK led Pin)
@@ -140,13 +143,22 @@ void setup() {
                     0,              // Priority of the task
                     NULL,           // Task handle.
                     taskCore);      // Core where the task should run
-  
-  EEPROM.begin(sizeof(int)*9*4*6+16);
+
+  EEPROM.begin(storedLutSize+storedArtnetOffsetSize+storedRgbwSize);
+
+  // Load Calibartion
   EEPROM.get(0, calibration_points);
-  EEPROM.get(sizeof(int)*9*4*6+1,DmxOffset);
+
+  // Load DMX offset
+  EEPROM.get(storedLutSize+1,DmxOffset);
+
+  // Load Colors
+  EEPROM.get(storedLutSize+storedArtnetOffsetSize+1,pwmValueRed);
+  EEPROM.get(storedLutSize+storedArtnetOffsetSize+16+1,pwmValueGreen);
+  EEPROM.get(storedLutSize+storedArtnetOffsetSize+32+1,pwmValueBlue);
+  EEPROM.get(storedLutSize+storedArtnetOffsetSize+48+1,pwmValueWhite);
 
   Serial.print("Welcome to Apollo lamp to use the terminal\n");
-  Serial.print("A 0 0 0 0 0 (R,G,B,W,Ttarget), I 0 0 0 0 0 (R,G,B,Wb,Ttarget), M, T, D\n\n\n");
 }
 
 void loop() {
@@ -169,23 +181,24 @@ void loop() {
         targetTempData = map(Fan,1,256,30*8,80*8); // Temp range between 30-80C
       } 
       
-      /*
+      
       set_dmx(DmxData[1 + DmxOffset],
               DmxData[2 + DmxOffset], 
               DmxData[3 + DmxOffset], 
               DmxData[4 + DmxOffset],
               Fan);
       
-      
+      /*
       pwmValueRed   = current_calibration_mixed[0];
       pwmValueGreen = current_calibration_mixed[1];
       pwmValueBlue  = current_calibration_mixed[2];
       pwmValueWhite = current_calibration_mixed[3];
-      */
+      
       pwmValueRed    = DmxData[1 + DmxOffset];
       pwmValueGreen  = DmxData[2 + DmxOffset];
       pwmValueBlue   = DmxData[3 + DmxOffset];
       pwmValueWhite  = DmxData[4 + DmxOffset];
+      */
     } 
   }
 

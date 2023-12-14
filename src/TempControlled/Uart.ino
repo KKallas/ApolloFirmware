@@ -56,11 +56,6 @@ void HandleUartCmd() {
     // Color Channels (R,G,B,W, tempTarget)
     sscanf(UartReceivedChars, "A%i %i %i %i %i", &IntensityRed, &IntensityGreen, &IntensityBlue, &IntensityWhite, &lamp_temp);
 
-    pwmValueRed    = IntensityRed;
-    pwmValueGreen  = IntensityGreen;
-    pwmValueBlue   = IntensityBlue;
-    pwmValueWhite  = IntensityWhite;
-
     // If no Fan value is provided then (codevalue 0) then use 65C
     if (lamp_temp == 0) {
       targetTempData = 520;
@@ -68,7 +63,23 @@ void HandleUartCmd() {
       targetTempData = map(lamp_temp,1,256,30*8,80*8); // Temp range between 30-80C
     }    
   
-    // UART answer
+    // UART store last color
+    if ((pwmValueRed != IntensityRed) or
+        (pwmValueGreen != IntensityGreen) or
+        (pwmValueBlue != IntensityBlue) or
+        (pwmValueWhite != IntensityWhite)) {
+      EEPROM.put(storedLutSize+storedArtnetOffsetSize+1, IntensityRed);
+      EEPROM.put(storedLutSize+storedArtnetOffsetSize+16+1, IntensityGreen);
+      EEPROM.put(storedLutSize+storedArtnetOffsetSize+32+1, IntensityBlue);
+      EEPROM.put(storedLutSize+storedArtnetOffsetSize+48+1, IntensityWhite);
+      EEPROM.commit();
+
+      pwmValueRed = IntensityRed;
+      pwmValueGreen = IntensityGreen;
+      pwmValueBlue = IntensityBlue;
+      pwmValueWhite = IntensityWhite;
+    }
+
     delay(300);
     Serial.printf("\"red_val\":%i,\"uncalibrated_red_val\":%i,\"green_val\":%i,\"blue_val\":%i,\"white_val\":%i,\"fan_val\":%i,\"temp\":%f,\"target_temp_inputC\":%f,\"targetTempDataC\":%f*\n", compRedVal, pwmValueRed, pwmValueGreen, pwmValueBlue, pwmValueWhite, pwmValueFan, currentTempData*0.125, lamp_temp*0.125, targetTempData*0.125);
     UartNewData = false;
@@ -109,7 +120,7 @@ void HandleUartCmd() {
     Serial.print(WiFi.macAddress());
     Serial.print("\", ");
 
-    Serial.print("\"Version\":20231213,"); //reversed europen date
+    Serial.print("\"Version\":20231214,"); //reversed europen date
 
     Serial.printf("\"tempC\":%f,", currentTempData*0.125);
     Serial.printf("\"tempTargetC\":%f,", targetTempData*0.125);
