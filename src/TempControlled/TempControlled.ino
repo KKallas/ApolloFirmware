@@ -51,7 +51,7 @@ boolean UartNewData = false;        // if all characters until newline are recie
 
                                     // DMX
 const int DmxReceivePin = 26;       // ESP32 pin (SK led Pin)
-char DmxOffset;                 // Offset from 512 addresses
+int DmxOffset;                      // Offset from 512 addresses
 dmx_port_t DmxPort = 1;             // Built in serial port HW
 byte DmxData[DMX_PACKET_SIZE];      // DMX packet buffer
 bool DmxIsConnected = false;        // Connected Flag

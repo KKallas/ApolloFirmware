@@ -31,6 +31,7 @@ void RecvUart() {
   }
 }
 
+// TODO: needs update
 /**
  * Handles UART commands and updates color and fan intensity values.
  *
@@ -48,9 +49,9 @@ void RecvUart() {
  */
 void HandleUartCmd() {
   uint IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite;
-  int input_brightness, wb, redin, r_in, g_in, b_in, w_in, wb_in, debug_red, debug_temp, lamp_temp;
+  int input_brightness, wb, redin, r_in, g_in, b_in, w_in, wb_in, debug_red, debug_temp, lamp_temp, dmx_in;
   int rgbw_in[4];
-  char dmx_in;
+  
   if (UartNewData == true && UartReceivedChars[0] == 'A') {
     // Color Channels (R,G,B,W, tempTarget)
     sscanf(UartReceivedChars, "A%i %i %i %i %i", &IntensityRed, &IntensityGreen, &IntensityBlue, &IntensityWhite, &lamp_temp);
@@ -108,7 +109,7 @@ void HandleUartCmd() {
     Serial.print(WiFi.macAddress());
     Serial.print("\", ");
 
-    Serial.print("\"Version\":20231130,"); //reversed europen date
+    Serial.print("\"Version\":20231213,"); //reversed europen date
 
     Serial.printf("\"tempC\":%f,", currentTempData*0.125);
     Serial.printf("\"tempTargetC\":%f,", targetTempData*0.125);
@@ -127,13 +128,22 @@ void HandleUartCmd() {
     UartNewData = false;
   }
   if (UartNewData == true && UartReceivedChars[0] == 'D' && UartReceivedChars[1] == 'r') {
-    Serial.printf("\"dmx_offset\":%c \n", DmxOffset);
+    Serial.printf("\"dmx_offset\":%i \n", DmxOffset);
     UartNewData = false;
   }
   if (UartNewData == true && UartReceivedChars[0] == 'D' && UartReceivedChars[1] == 'w') {
-    sscanf(UartReceivedChars, "Dw %c", &dmx_in);
+    sscanf(UartReceivedChars, "Dw %d", &dmx_in);
     DmxOffset = dmx_in;
-    Serial.printf("\"dmx_offset\":%c \n",DmxOffset);
+    
+    // Clip input values
+    if (dmx_in < 0) {
+      dmx_in = 0;
+    }
+    if (dmx_in > 511) {
+      dmx_in = 511;
+    }
+
+    Serial.printf("\"dmx_offset\":%i \n",DmxOffset);
     EEPROM.put(sizeof(int)*9*4*6+1,dmx_in);
     EEPROM.commit();
 
@@ -195,7 +205,7 @@ void HandleUartCmd() {
     UartNewData = false;
   }
   if (UartNewData == true && UartReceivedChars[0] == 'R') {
-    disable_red_comp = true;
+    disable_red_comp = true;                       // once calling this command it is possible to use A command without red compensation until restart
     sscanf(UartReceivedChars, "R %i", &lamp_temp); // user will ask for 1C increment temp, if temp is not correct then target temp or RGBW value is set, if correct settings are kept and max red is switched on
     targetTempData = lamp_temp*8;
 
@@ -227,7 +237,10 @@ void HandleUartCmd() {
       pwmValueWhite = 0;
       Serial.printf("\"ready\":True, \"tempC\":%f,\"tempTargetC\":%f,\"fanSpeed\":%i \n",currentTempData*0.125,targetTempData*0.125,pwmValueFan);
     }
-    
+    UartNewData = false;
+  }
+  if (UartNewData == true) {
+    Serial.print("Unkown command...\n");
     UartNewData = false;
   }
 }
