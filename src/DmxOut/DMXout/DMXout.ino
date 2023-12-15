@@ -1,3 +1,9 @@
+/*
+ [ ] Add sACN
+ [ ] AP/Client (Atom RGB led)
+ [ ] Create homepage to show my ip
+ [ ] Webpage sliders
+*/
 #include <Arduino.h>
 #include <esp_dmx.h>
 

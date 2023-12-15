@@ -5,6 +5,19 @@
 #include <WiFi.h> // Only for MAC id
 #include <EEPROM.h>
 
+// IO pins
+const int redPin = 21;            // IO21 (Red Channel)
+const int greenPin = 19;          // IO19 (Green Channel) 
+const int bluePin = 18;           // IO18 (Blue Channel)
+const int whitePin = 4;           // IO04 (White Channel)
+const int fanPin = 0;             // IO0  (Fan)          
+
+const int EnabledPin = 27;
+const int I2cSdaPin = 23;
+const int I2cSclPin = 22;
+const int DmxReceivePin = 26;      // ESP32 pin (SK led Pin)
+
+
 const int taskCore = 0;
 const int pwmPin = 21;
 unsigned long lastUpdate = millis();
@@ -53,7 +66,6 @@ const int storedArtnetOffsetSize = 16;
 const int storedRgbwSize = 4*16;
 
                                     // DMX
-const int DmxReceivePin = 26;       // ESP32 pin (SK led Pin)
 int DmxOffset;                      // Offset from 512 addresses
 dmx_port_t DmxPort = 1;             // Built in serial port HW
 byte DmxData[DMX_PACKET_SIZE];      // DMX packet buffer
@@ -80,11 +92,11 @@ void ColorUpdate( void * pvParameters ){
     ledcSetup(2, pwmFrequency, pwmResolution); 
     ledcSetup(3, pwmFrequency, pwmResolution); 
     ledcSetup(4, pwmFrequency, pwmResolution); 
-    ledcAttachPin(21, 0);           // Attach PWM to IO21 (Red Channel)
-    ledcAttachPin(19, 1);           // Attach PWM to IO19 (Green Channel) 
-    ledcAttachPin(18, 2);           // Attach PWM to IO18 (Blue Channel)
-    ledcAttachPin(4, 3);            // Attach PWM to IO04 (White Channel) 
-    ledcAttachPin(0, 4);            // Fan IO0
+    ledcAttachPin(redPin, 0);
+    ledcAttachPin(greenPin, 1);
+    ledcAttachPin(bluePin, 2);
+    ledcAttachPin(whitePin, 3);
+    ledcAttachPin(fanPin, 4);
 
     while(true){
       if (overheated == false) {    // Overheting protection
@@ -122,11 +134,11 @@ void setup() {
  
   Serial.begin(115200);
                                 /* Enable All outputs */
-  pinMode(27, OUTPUT);              // Set IO27 as output
-  digitalWrite(27, HIGH);           // Enable output on IO27 (set it to HIGH)  
+  pinMode(EnabledPin, OUTPUT);              // Set IO27 as output
+  digitalWrite(EnabledPin, HIGH);           // Enable output on IO27 (set it to HIGH)  
 
                                 /* I2C */
-  Wire.begin(23,22);                // Wire needs always 2 pins
+  Wire.begin(I2cSdaPin, I2cSclPin);         // Wire needs always 2 pins
 
                                 /* 485(DMX/RDM) */
   dmx_set_pin(DmxPort, 0, DmxReceivePin, 0);

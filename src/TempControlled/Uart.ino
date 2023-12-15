@@ -120,7 +120,7 @@ void HandleUartCmd() {
     Serial.print(WiFi.macAddress());
     Serial.print("\", ");
 
-    Serial.print("\"Version\":20231214,"); //reversed europen date
+    Serial.print("\"Version\":20231215,"); //reversed europen date
 
     Serial.printf("\"tempC\":%f,", currentTempData*0.125);
     Serial.printf("\"tempTargetC\":%f,", targetTempData*0.125);
