@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <WiFi.h> // Only for MAC id
 #include <EEPROM.h>
+#include <ezButton.h>
 
 // IO pins
 const int redPin = 21;            // IO21 (Red Channel)
@@ -15,8 +16,14 @@ const int fanPin = 0;             // IO0  (Fan)
 const int EnabledPin = 27;
 const int I2cSdaPin = 23;
 const int I2cSclPin = 22;
+const int TachoPin = 25;
 const int DmxReceivePin = 26;      // ESP32 pin (SK led Pin)
 
+ezButton buttonPower(34);
+ezButton buttonProgram(35);
+
+bool powerSate = true;
+bool programSate = true;
 
 const int taskCore = 0;
 const int pwmPin = 21;
@@ -28,6 +35,7 @@ const int pwmResolution  = 11;     // 11-bit resolution (2048 levels)
 const int blinkFrequency = 200;    // Update rate
 const int STEPS          = 50;     // Interpolation setps 1/200*steps = interpolation time in seconds
 
+int lastRGBW[4];
 
 int pwmValueRed    = 0;           // Per channel data (do these need to be uint?)
 int pwmValueGreen  = 0;
@@ -112,10 +120,17 @@ void ColorUpdate( void * pvParameters ){
         // pwmValueFan = updateChannel(pwmValueFan,targetValueFan,stepFan);
 
                                     // Set Color
-        ledcWrite(0, compRedVal);
-        ledcWrite(1, pwmValueGreen);
-        ledcWrite(2, pwmValueBlue);
-        ledcWrite(3, pwmValueWhite);
+        if (powerSate) {
+          ledcWrite(0, compRedVal);
+          ledcWrite(1, pwmValueGreen);
+          ledcWrite(2, pwmValueBlue);
+          ledcWrite(3, pwmValueWhite);
+        } else {
+          ledcWrite(0, 0);
+          ledcWrite(1, 0);
+          ledcWrite(2, 0);
+          ledcWrite(3, 0);
+        }
         ledcWrite(4, pwmValueFan);
       } else {
         ledcWrite(0, 0);
@@ -170,13 +185,48 @@ void setup() {
   EEPROM.get(storedLutSize+storedArtnetOffsetSize+32+1,pwmValueBlue);
   EEPROM.get(storedLutSize+storedArtnetOffsetSize+48+1,pwmValueWhite);
 
+  buttonPower.setDebounceTime(50);
+  buttonProgram.setDebounceTime(50);
+
   Serial.print("Welcome to Apollo lamp to use the terminal\n");
 }
 
 void loop() {
   dmx_packet_t packet;
 
-  if (dmx_receive(DmxPort, &packet, DMX_TIMEOUT_TICK)) {
+  buttonPower.loop();
+  buttonProgram.loop();
+  
+  if (buttonPower.isPressed()) {
+    if (powerSate) {
+      powerSate = false;
+    } else {
+      powerSate = true;
+    }
+  }
+
+  if(buttonProgram.isPressed()) {
+    if (programSate) {
+      programSate = false;
+      lastRGBW[0] = pwmValueRed;
+      lastRGBW[1] = pwmValueGreen;
+      lastRGBW[2] = pwmValueBlue;
+      lastRGBW[3] = pwmValueWhite;
+      set_dmx(255,255,255,100,0,false);
+      pwmValueRed = current_calibration_mixed[0];
+      pwmValueGreen = current_calibration_mixed[1];
+      pwmValueBlue = current_calibration_mixed[2];
+      pwmValueWhite = current_calibration_mixed[3];
+    } else {
+      programSate = true;
+      pwmValueRed = lastRGBW[0];
+      pwmValueGreen = lastRGBW[1];
+      pwmValueBlue = lastRGBW[2];
+      pwmValueWhite = lastRGBW[3];
+    }
+  }
+
+  if (dmx_receive(DmxPort, &packet, 0)) {
     if (!packet.err) {
       if (!DmxIsConnected) {
         DmxIsConnected = true;
@@ -198,7 +248,8 @@ void loop() {
               DmxData[2 + DmxOffset], 
               DmxData[3 + DmxOffset], 
               DmxData[4 + DmxOffset],
-              Fan);
+              Fan,
+              true);
       
       /*
       pwmValueRed   = current_calibration_mixed[0];

@@ -21,7 +21,7 @@ void RecvUart() {
       if (ndx >= 64) {
         ndx = 64 - 1;
       }
-      Serial.print(rc);
+      //Serial.print(rc);
     }
     else {
       UartReceivedChars[ndx] = '\0'; // terminate the string
@@ -93,7 +93,7 @@ void HandleUartCmd() {
   }
   if (UartNewData == true && UartReceivedChars[0] == 'I') {
     sscanf(UartReceivedChars, "I%i %i %i %i %i %i", &r_in, &g_in, &b_in, &wb_in, &lamp_temp);
-    set_dmx(r_in, g_in, b_in, wb_in, 0);
+    set_dmx(r_in, g_in, b_in, wb_in, 0, true);
     pwmValueRed = current_calibration_mixed[0];
     pwmValueGreen = current_calibration_mixed[1];
     pwmValueBlue = current_calibration_mixed[2];
