@@ -109,6 +109,31 @@ void HandleUartCmd() {
    
     UartNewData = false;
   }
+  if (UartNewData == true && UartReceivedChars[0] == 'K') {
+    // Color Channels (R,G,B,W, tempTarget)
+    sscanf(UartReceivedChars, "K%i %i %i %i %i", &IntensityRed, &IntensityGreen, &IntensityBlue, &IntensityWhite, &lamp_temp);
+
+    // If no Fan value is provided then (codevalue 0) then use 65C
+    if (lamp_temp == 0) {
+      targetTempData = 520;
+    } else {
+      targetTempData = map(lamp_temp,1,256,30*8,80*8); // Temp range between 30-80C
+    }    
+    // If no Red value is provided, then turn Red compensation on again
+    if (IntensityRed == 0) {
+      disable_red_comp = false;  // red compensation on again
+    } else {
+      disable_red_comp = true;  // red compensation off
+    }    
+    pwmValueRed = IntensityRed;
+    pwmValueGreen = IntensityGreen;
+    pwmValueBlue = IntensityBlue;
+    pwmValueWhite = IntensityWhite;
+  
+    delay(300);
+    Serial.printf("\"red_val\":%i,\"green_val\":%i,\"blue_val\":%i,\"white_val\":%i,\"fan_val\":%i,\"temp\":%f,\"target_temp_inputC\":%f,\"targetTempDataC\":%f*\n", pwmValueRed, pwmValueGreen, pwmValueBlue, pwmValueWhite, pwmValueFan, currentTempData*0.125, lamp_temp*0.125, targetTempData*0.125);
+    UartNewData = false;
+  }
   if (UartNewData == true && UartReceivedChars[0] == 'M') {
     Serial.print("\"mac\":\"");
     Serial.print(WiFi.macAddress());
@@ -136,6 +161,14 @@ void HandleUartCmd() {
     Serial.printf("\"calB\":(%i, %i, %i, %i), ", current_calibration_B[0],  current_calibration_B[1],  current_calibration_B[2],  current_calibration_B[3]);
     Serial.printf("\"calMixed\":(%i,%i,%i,%i)\n", current_calibration_mixed[0], current_calibration_mixed[1], current_calibration_mixed[2], current_calibration_mixed[3]);
   
+    UartNewData = false;
+  }
+  if (UartNewData == true && UartReceivedChars[0] == 'D' && UartReceivedChars[1] == 'd') {
+    if(dmxDebugState) {
+      dmxDebugState = false;
+    } else {
+      dmxDebugState = true;
+    }
     UartNewData = false;
   }
   if (UartNewData == true && UartReceivedChars[0] == 'D' && UartReceivedChars[1] == 'r') {

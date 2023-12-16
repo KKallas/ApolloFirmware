@@ -24,6 +24,7 @@ ezButton buttonProgram(35);
 
 bool powerSate = true;
 bool programSate = true;
+bool dmxDebugState = false;
 
 const int taskCore = 0;
 const int pwmPin = 21;
@@ -151,6 +152,10 @@ void ColorUpdate( void * pvParameters ){
         // pwmValueFan = updateChannel(pwmValueFan,targetValueFan,stepFan);
 
                                     // Set Color
+        /*
+        The difference with overheatring is we want the normal Fan functionality to continue even after blackout
+        Therefore toggle of RGBW channels and fan is handeled sepparately later
+        */
         if (powerSate) {
           ledcWrite(0, compRedVal);
           ledcWrite(1, pwmValueGreen);
@@ -186,7 +191,7 @@ void setup() {
                                 /* I2C */
   Wire.begin(I2cSdaPin, I2cSclPin);         // Wire needs always 2 pins
 
-                                /* 485(DMX/RDM) */
+                                /* 485(DMX) */
 
   dmx_driver_install(DmxPort, DMX_DEFAULT_INTR_FLAGS);
   dmx_set_pin(DmxPort, 0, DmxReceivePin, 0);
@@ -243,25 +248,30 @@ void loop() {
         targetTempData = map(Fan,1,256,30*8,80*8); // Temp range between 30-80C
       } 
       
-      //Serial.printf("DMX: %i %i %i %i\n",DmxData[1 + DmxOffset], DmxData[2 + DmxOffset], DmxData[3 + DmxOffset], DmxData[4 + DmxOffset]);
-      set_dmx(DmxData[1 + DmxOffset],
-              DmxData[2 + DmxOffset], 
-              DmxData[3 + DmxOffset], 
-              DmxData[4 + DmxOffset],
-              Fan,
-              false);
-      
-      
-      pwmValueRed   = current_calibration_mixed[0];
-      pwmValueGreen = current_calibration_mixed[1];
-      pwmValueBlue  = current_calibration_mixed[2];
-      pwmValueWhite = current_calibration_mixed[3];
-      /*
-      pwmValueRed    = DmxData[1 + DmxOffset];
-      pwmValueGreen  = DmxData[2 + DmxOffset];
-      pwmValueBlue   = DmxData[3 + DmxOffset];
-      pwmValueWhite  = DmxData[4 + DmxOffset];
-      */
+      if(dmxDebugState) {
+        Serial.printf("DMX: %i %i %i %i %i\n",DmxData[1 + DmxOffset], DmxData[2 + DmxOffset], DmxData[3 + DmxOffset], DmxData[4 + DmxOffset], [5 + DmxOffset]);
+      }
+
+      if (powerSate && programSate) {
+        set_dmx(DmxData[1 + DmxOffset],
+                DmxData[2 + DmxOffset], 
+                DmxData[3 + DmxOffset], 
+                DmxData[4 + DmxOffset],
+                Fan,
+                false);
+        
+        
+        pwmValueRed   = current_calibration_mixed[0];
+        pwmValueGreen = current_calibration_mixed[1];
+        pwmValueBlue  = current_calibration_mixed[2];
+        pwmValueWhite = current_calibration_mixed[3];
+        /* direct passthrough
+        pwmValueRed    = DmxData[1 + DmxOffset];
+        pwmValueGreen  = DmxData[2 + DmxOffset];
+        pwmValueBlue   = DmxData[3 + DmxOffset];
+        pwmValueWhite  = DmxData[4 + DmxOffset];
+        */
+      }
     } 
   }
 
