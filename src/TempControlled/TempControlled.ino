@@ -1,10 +1,10 @@
 #include <Arduino.h>
-#include <esp_dmx.h>
+#include <esp_dmx.h> // 3.0.3 beta
 #include <Wire.h>
 #include <limits.h>
 #include <WiFi.h> // Only for MAC id
 #include <EEPROM.h>
-#include <ezButton.h>
+#include <ezButton.h> // 1.0.4
 
 // IO pins
 const int redPin = 21;            // IO21 (Red Channel)
@@ -107,6 +107,37 @@ void ColorUpdate( void * pvParameters ){
     ledcAttachPin(fanPin, 4);
 
     while(true){
+      buttonPower.loop();
+      buttonProgram.loop();
+      
+      if (buttonPower.isPressed()) {
+        if (powerSate) {
+          powerSate = false;
+        } else {
+          powerSate = true;
+        }
+      }
+
+      if(buttonProgram.isPressed()) {
+        if (programSate) {
+          programSate = false;
+          lastRGBW[0] = pwmValueRed;
+          lastRGBW[1] = pwmValueGreen;
+          lastRGBW[2] = pwmValueBlue;
+          lastRGBW[3] = pwmValueWhite;
+          set_dmx(255,255,255,100,0,false);
+          pwmValueRed = current_calibration_mixed[0];
+          pwmValueGreen = current_calibration_mixed[1];
+          pwmValueBlue = current_calibration_mixed[2];
+          pwmValueWhite = current_calibration_mixed[3];
+        } else {
+          programSate = true;
+          pwmValueRed = lastRGBW[0];
+          pwmValueGreen = lastRGBW[1];
+          pwmValueBlue = lastRGBW[2];
+          pwmValueWhite = lastRGBW[3];
+        }
+      }
       if (overheated == false) {    // Overheting protection
 
                                     // Red comp with disable option, all other than redcalib should set disable_red_comp = false;
@@ -156,8 +187,9 @@ void setup() {
   Wire.begin(I2cSdaPin, I2cSclPin);         // Wire needs always 2 pins
 
                                 /* 485(DMX/RDM) */
-  dmx_set_pin(DmxPort, 0, DmxReceivePin, 0);
+
   dmx_driver_install(DmxPort, DMX_DEFAULT_INTR_FLAGS);
+  dmx_set_pin(DmxPort, 0, DmxReceivePin, 0);
 
                                 // Color Update 
                                     // 2nd core is used perly for the update and calibration
@@ -194,39 +226,7 @@ void setup() {
 void loop() {
   dmx_packet_t packet;
 
-  buttonPower.loop();
-  buttonProgram.loop();
-  
-  if (buttonPower.isPressed()) {
-    if (powerSate) {
-      powerSate = false;
-    } else {
-      powerSate = true;
-    }
-  }
-
-  if(buttonProgram.isPressed()) {
-    if (programSate) {
-      programSate = false;
-      lastRGBW[0] = pwmValueRed;
-      lastRGBW[1] = pwmValueGreen;
-      lastRGBW[2] = pwmValueBlue;
-      lastRGBW[3] = pwmValueWhite;
-      set_dmx(255,255,255,100,0,false);
-      pwmValueRed = current_calibration_mixed[0];
-      pwmValueGreen = current_calibration_mixed[1];
-      pwmValueBlue = current_calibration_mixed[2];
-      pwmValueWhite = current_calibration_mixed[3];
-    } else {
-      programSate = true;
-      pwmValueRed = lastRGBW[0];
-      pwmValueGreen = lastRGBW[1];
-      pwmValueBlue = lastRGBW[2];
-      pwmValueWhite = lastRGBW[3];
-    }
-  }
-
-  if (dmx_receive(DmxPort, &packet, 0)) {
+  if (dmx_receive(DmxPort, &packet, DMX_TIMEOUT_TICK)) {
     if (!packet.err) {
       if (!DmxIsConnected) {
         DmxIsConnected = true;
@@ -243,20 +243,20 @@ void loop() {
         targetTempData = map(Fan,1,256,30*8,80*8); // Temp range between 30-80C
       } 
       
-      
+      //Serial.printf("DMX: %i %i %i %i\n",DmxData[1 + DmxOffset], DmxData[2 + DmxOffset], DmxData[3 + DmxOffset], DmxData[4 + DmxOffset]);
       set_dmx(DmxData[1 + DmxOffset],
               DmxData[2 + DmxOffset], 
               DmxData[3 + DmxOffset], 
               DmxData[4 + DmxOffset],
               Fan,
-              true);
+              false);
       
-      /*
+      
       pwmValueRed   = current_calibration_mixed[0];
       pwmValueGreen = current_calibration_mixed[1];
       pwmValueBlue  = current_calibration_mixed[2];
       pwmValueWhite = current_calibration_mixed[3];
-      
+      /*
       pwmValueRed    = DmxData[1 + DmxOffset];
       pwmValueGreen  = DmxData[2 + DmxOffset];
       pwmValueBlue   = DmxData[3 + DmxOffset];
