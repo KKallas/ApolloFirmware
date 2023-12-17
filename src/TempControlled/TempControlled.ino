@@ -18,6 +18,7 @@ const int I2cSdaPin = 23;
 const int I2cSclPin = 22;
 const int TachoPin = 25;
 const int DmxReceivePin = 26;      // ESP32 pin (SK led Pin)
+const int tachFanPulses = 2;
 
 ezButton buttonPower(34);
 ezButton buttonProgram(35);
@@ -30,6 +31,8 @@ const int taskCore = 0;
 const int pwmPin = 21;
 unsigned long lastUpdate = millis();
 unsigned long now = millis();
+int tachoCount = 0;
+int fanRpm = 0;
                                    // LIGHT
 const int pwmFrequency   = 20000;  // 20 kHz
 const int pwmResolution  = 11;     // 11-bit resolution (2048 levels)
@@ -79,6 +82,8 @@ int DmxOffset;                      // Offset from 512 addresses
 dmx_port_t DmxPort = 1;             // Built in serial port HW
 byte DmxData[DMX_PACKET_SIZE];      // DMX packet buffer
 bool DmxIsConnected = false;        // Connected Flag
+int oldDmx[] = {0,0,0,0,0};
+int newDmx[] = {0,0,0,0,0};
 
                                     // Calibration                            
 int current_calibration_A[4] = {0, 0, 0, 0};
@@ -225,7 +230,14 @@ void setup() {
   buttonPower.setDebounceTime(50);
   buttonProgram.setDebounceTime(50);
 
+  // Fan Tacho
+  attachInterrupt(TachoPin, tachoRead, FALLING);
+
   Serial.print("Welcome to Apollo lamp to use the terminal\n");
+}
+
+void tachoRead() {
+  tachoCount += 1;
 }
 
 void loop() {
@@ -240,26 +252,36 @@ void loop() {
       // Read DMX and set the color values
       dmx_read(DmxPort, DmxData, packet.size);
 
+      newDmx[0] = DmxData[1 + DmxOffset];
+      newDmx[1] = DmxData[2 + DmxOffset];
+      newDmx[2] = DmxData[3 + DmxOffset];
+      newDmx[3] = DmxData[4 + DmxOffset];
+      newDmx[4] = DmxData[5 + DmxOffset];
+
+      // If it is the same packet nothing fruther to do
+      if (arraysAreEqual(newDmx,oldDmx) == true) {
+        return;
+      }
+
+      // Copy to old so it would be possible to check
+      for (int i = 0; i < 5; i++) {
+        oldDmx[i] = newDmx[i];
+      }
+
       // If no Fan value is provided then (codevalue 0) then use 65C
-      int Fan = DmxData[5 + DmxOffset];
+      int Fan = newDmx[4];
       if (Fan == 0) {
         Fan = 520;
       } else {
         targetTempData = map(Fan,1,256,30*8,80*8); // Temp range between 30-80C
-      } 
-      
+      }
+
       if(dmxDebugState) {
-        Serial.printf("DMX: %i %i %i %i %i\n",DmxData[1 + DmxOffset], DmxData[2 + DmxOffset], DmxData[3 + DmxOffset], DmxData[4 + DmxOffset], [5 + DmxOffset]);
+        Serial.printf("DMX: %i %i %i %i %i\n",newDmx[0], newDmx[1], newDmx[2], newDmx[3], newDmx[4]);
       }
 
       if (powerSate && programSate) {
-        set_dmx(DmxData[1 + DmxOffset],
-                DmxData[2 + DmxOffset], 
-                DmxData[3 + DmxOffset], 
-                DmxData[4 + DmxOffset],
-                Fan,
-                false);
-        
+        set_dmx(newDmx[0], newDmx[1], newDmx[2], newDmx[3], Fan, true);
         
         pwmValueRed   = current_calibration_mixed[0];
         pwmValueGreen = current_calibration_mixed[1];
@@ -279,6 +301,8 @@ void loop() {
   now = millis();
 
   if (now - lastUpdate > 5000) {
+    fanRpm = tachoCount * 60 / 5 / tachFanPulses; 
+    tachoCount = 0;
     readTemp();
     updateFanSpeed();           
     //Serial.printf("time:%i,dmx_fan:%02X,dmx_val:%02X,temp:%f\n", lastUpdate, data[511], data[512],temperatureData*0.125);
@@ -291,4 +315,14 @@ void loop() {
   RecvUart();
   HandleUartCmd();
   usleep(10);
+}
+
+
+bool arraysAreEqual(int arr1[], int arr2[]) {
+  for (int i = 0; i < 5; i++) {
+      if (arr1[i] != arr2[i]) {
+          return false; // Arrays are not equal
+      }
+  }
+  return true; // Arrays are equal
 }

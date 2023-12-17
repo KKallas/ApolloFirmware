@@ -81,7 +81,7 @@ void HandleUartCmd() {
     }
 
     delay(300);
-    Serial.printf("\"red_val\":%i,\"uncalibrated_red_val\":%i,\"green_val\":%i,\"blue_val\":%i,\"white_val\":%i,\"fan_val\":%i,\"temp\":%f,\"target_temp_inputC\":%f,\"targetTempDataC\":%f*\n", compRedVal, pwmValueRed, pwmValueGreen, pwmValueBlue, pwmValueWhite, pwmValueFan, currentTempData*0.125, lamp_temp*0.125, targetTempData*0.125);
+    Serial.printf("\"red_val\":%i,\"uncalibrated_red_val\":%i,\"green_val\":%i,\"blue_val\":%i,\"white_val\":%i,\"fan_val\":%i,\"temp\":%f,\"target_temp_inputC\":%f,\"targetTempDataC\":%f,\"fanRPM\":%i*\n", compRedVal, pwmValueRed, pwmValueGreen, pwmValueBlue, pwmValueWhite, pwmValueFan, currentTempData*0.125, lamp_temp*0.125, targetTempData*0.125, fanRpm);
     UartNewData = false;
   }
   if (UartNewData == true && UartReceivedChars[0] == 'T') {
@@ -92,21 +92,24 @@ void HandleUartCmd() {
     UartNewData = false;
   }
   if (UartNewData == true && UartReceivedChars[0] == 'I') {
-    sscanf(UartReceivedChars, "I%i %i %i %i %i %i", &r_in, &g_in, &b_in, &wb_in, &lamp_temp);
-    set_dmx(r_in, g_in, b_in, wb_in, 0, true);
-    pwmValueRed = current_calibration_mixed[0];
-    pwmValueGreen = current_calibration_mixed[1];
-    pwmValueBlue = current_calibration_mixed[2];
-    pwmValueWhite = current_calibration_mixed[3];
-    
-    // If no Fan value is provided then (codevalue 0) then use 65C
-    if (lamp_temp == 0) {
-      targetTempData = 520;
+    if (programSate && powerSate) {
+      sscanf(UartReceivedChars, "I%i %i %i %i %i %i", &r_in, &g_in, &b_in, &wb_in, &lamp_temp);
+      set_dmx(r_in, g_in, b_in, wb_in, 0, true);
+      pwmValueRed = current_calibration_mixed[0];
+      pwmValueGreen = current_calibration_mixed[1];
+      pwmValueBlue = current_calibration_mixed[2];
+      pwmValueWhite = current_calibration_mixed[3];
+      
+      // If no Fan value is provided then (codevalue 0) then use 65C
+      if (lamp_temp == 0) {
+        targetTempData = 520;
+      } else {
+        targetTempData = map(lamp_temp,0,255,240,640); // Temp range between 30-80C
+      } 
+      Serial.printf("\"mixed_red\":%i,\"mixed_green\":%i,\"mixed_blue\":%i,\"mixed_white\":%i,\"red_actual\":%i,\"lamp_temp\":%f,\"lamp_target\":%f,\"fan_power\":%i,\"fan_rpm\":%i*\n", current_calibration_mixed[0],current_calibration_mixed[1],current_calibration_mixed[2],current_calibration_mixed[3],compRedVal,currentTempData*0.125, targetTempData*0.125, pwmValueFan, fanRpm);
     } else {
-      targetTempData = map(lamp_temp,0,255,240,640); // Temp range between 30-80C
-    } 
-    Serial.printf("\"mixed_red\":%i,\"mixed_green\":%i,\"mixed_blue\":%i,\"mixed_white\":%i,\"red_actual\":%i,\"lamp_temp\":%f,\"lamp_target\":%f,\"fan_speed\":%i*\n", current_calibration_mixed[0],current_calibration_mixed[1],current_calibration_mixed[2],current_calibration_mixed[3],compRedVal,currentTempData*0.125, targetTempData*0.125, pwmValueFan);
-   
+      Serial.print("\"error\":\"Could not set new color value as lamp is not in Program or On mode\"*\n");
+    }
     UartNewData = false;
   }
   if (UartNewData == true && UartReceivedChars[0] == 'K') {
@@ -131,7 +134,7 @@ void HandleUartCmd() {
     pwmValueWhite = IntensityWhite;
   
     delay(300);
-    Serial.printf("\"red_val\":%i,\"green_val\":%i,\"blue_val\":%i,\"white_val\":%i,\"fan_val\":%i,\"temp\":%f,\"target_temp_inputC\":%f,\"targetTempDataC\":%f*\n", pwmValueRed, pwmValueGreen, pwmValueBlue, pwmValueWhite, pwmValueFan, currentTempData*0.125, lamp_temp*0.125, targetTempData*0.125);
+    Serial.printf("\"red_val\":%i,\"green_val\":%i,\"blue_val\":%i,\"white_val\":%i,\"fan_val\":%i,\"temp\":%f,\"target_temp_inputC\":%f,\"targetTempDataC\":%f,\"fanRPM\":%i*\n", pwmValueRed, pwmValueGreen, pwmValueBlue, pwmValueWhite, pwmValueFan, currentTempData*0.125, lamp_temp*0.125, targetTempData*0.125, fanRpm);
     UartNewData = false;
   }
   if (UartNewData == true && UartReceivedChars[0] == 'M') {
@@ -149,7 +152,8 @@ void HandleUartCmd() {
 
     Serial.printf("\"tempC\":%f,", currentTempData*0.125);
     Serial.printf("\"tempTargetC\":%f,", targetTempData*0.125);
-    Serial.printf("\"fanSpeed\":%i,", pwmValueFan);
+    Serial.printf("\"fanPower\":%i,", pwmValueFan);
+    Serial.printf("\"fanRPM\":%i,", fanRpm);
 
     Serial.printf("\"DmxR\":%i,", DmxData[1 + DmxOffset]);
     Serial.printf("\"DmxG\":%i,", DmxData[2 + DmxOffset]);
