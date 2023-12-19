@@ -5,4 +5,5 @@
  - [X] Fan Read
  - [X] DMX update only if new value
  - [ ] Warm brightness 0-75% coverage
+ - [ ] Write Brightness points with calibaration
 */

@@ -49,8 +49,8 @@ void RecvUart() {
  */
 void HandleUartCmd() {
   uint IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite;
-  int input_brightness, wb, redin, r_in, g_in, b_in, w_in, wb_in, debug_red, debug_temp, lamp_temp, dmx_in;
-  int rgbw_in[4];
+  int input_brightness, wb, redin, r_in, g_in, b_in, w_in, wb_in, lx_in, debug_red, debug_temp, lamp_temp, dmx_in;
+  int rgbwx_in[5];
   
   if (UartNewData == true && UartReceivedChars[0] == 'A') {
     // Color Channels (R,G,B,W, tempTarget)
@@ -198,7 +198,7 @@ void HandleUartCmd() {
     UartNewData = false;
   }
   if (UartNewData == true && UartReceivedChars[0] == 'C' && UartReceivedChars[1] == 'w') {
-    sscanf(UartReceivedChars, "Cw %i %i %i %i %i %i", &wb, &input_brightness, &r_in, &g_in, &b_in, &w_in);
+    sscanf(UartReceivedChars, "Cw %i %i %i %i %i %i %i", &wb, &input_brightness, &lx_in, &r_in, &g_in, &b_in, &w_in);
 
     // Chek WB range
     if (wb < 0 || wb > 6) {
@@ -212,13 +212,20 @@ void HandleUartCmd() {
       UartNewData = false;
       return;
     }
+    // Check lux val
+    if (lx_in < 0 || lx_in > 65000) {
+      Serial.printf("Lux input: %i must be from 0-65000\n", lx_in);
+      UartNewData = false;
+      return;
+    }
 
     // Write value to EEPROM
-    rgbw_in[0] = r_in;
-    rgbw_in[1] = g_in;
-    rgbw_in[2] = b_in;
-    rgbw_in[3] = w_in;
-    EEPROM.put((wb*9*4*sizeof(int))+(input_brightness*4*sizeof(int)), rgbw_in);
+    rgbwx_in[0] = r_in;
+    rgbwx_in[1] = g_in;
+    rgbwx_in[2] = b_in;
+    rgbwx_in[3] = w_in;
+    rgbwx_in[4] = lx_in;
+    EEPROM.put((wb*9*5*sizeof(int))+(input_brightness*5*sizeof(int)), rgbwx_in);
     EEPROM.commit();
 
     // Update Current calibration
@@ -227,7 +234,7 @@ void HandleUartCmd() {
     calibration_points[wb][input_brightness][2] = b_in;
     calibration_points[wb][input_brightness][3] = w_in;
 
-    Serial.printf("\"wb\":%i, \"brightness\":%i, \"r\":%i, \"g\":%i, \"b\":%i, \"w\":%i*\n", wb, input_brightness, r_in, g_in, b_in, w_in);
+    Serial.printf("\"wb\":%i, \"brightness\":%i, \"lux\":%i, \"r\":%i, \"g\":%i, \"b\":%i, \"w\":%i*\n", wb, input_brightness, lx_in, r_in, g_in, b_in, w_in);
 
     UartNewData = false;
   }
@@ -248,8 +255,8 @@ void HandleUartCmd() {
     }
 
     Serial.printf("\"wb\":%i, \"brightness\":%i, \"r\":%i, \"g\":%i, \"b\":%i, \"w\":%i*\n", wb, input_brightness, calibration_points[wb][input_brightness][0], calibration_points[wb][input_brightness][1], calibration_points[wb][input_brightness][2], calibration_points[wb][input_brightness][3]);
-    EEPROM.get((wb*9*4*sizeof(int))+(input_brightness*4*sizeof(int)), rgbw_in);
-    Serial.printf("\"EEPROM addr\":%i, \"r\":%i, \"g\":%i, \"b\":%i, \"w\":%i*\n", (wb*9*4*sizeof(int))+(input_brightness*4*sizeof(int)), rgbw_in[0], rgbw_in[1], rgbw_in[2], rgbw_in[3]);
+    EEPROM.get((wb*9*5*sizeof(int))+(input_brightness*5*sizeof(int)), rgbwx_in);
+    Serial.printf("\"EEPROM addr\":%i, \"lux\":%i, \"r\":%i, \"g\":%i, \"b\":%i, \"w\":%i*\n", (wb*9*5*sizeof(int))+(input_brightness*5*sizeof(int)), rgbwx_in[4], rgbwx_in[0], rgbwx_in[1], rgbwx_in[2], rgbwx_in[3]);
     UartNewData = false;
   }
   if (UartNewData == true && UartReceivedChars[0] == 'R') {

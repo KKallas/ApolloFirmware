@@ -73,7 +73,7 @@ int pwmValueFan  = 0;
                                     // UART
 char UartReceivedChars[64];         // an array to store the received UART data
 boolean UartNewData = false;        // if all characters until newline are recieved
-const int storedLutSize = sizeof(int)*9*4*6;
+const int storedLutSize = sizeof(int)*9*5*6;
 const int storedArtnetOffsetSize = 16;
 const int storedRgbwSize = 4*16;
 
