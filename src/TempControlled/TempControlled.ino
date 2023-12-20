@@ -93,7 +93,7 @@ int intesity_list[9]     = {0, 1, 36, 73, 109, 145, 181,  218,  255};
 int intesity_list_log[9] = {0, 1, 32, 64, 128, 256, 512, 1024, 2048};
 int wb_index_list[6] = {0,14,71,100,178,255}; 
 
-int calibration_points[6][9][4];
+int calibration_points[6][9][5];
 bool disable_red_comp = false;
 
 void ColorUpdate( void * pvParameters ){
