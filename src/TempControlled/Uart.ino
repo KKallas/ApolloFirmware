@@ -69,10 +69,9 @@ void HandleUartCmd() {
         (pwmValueGreen != IntensityGreen) or
         (pwmValueBlue != IntensityBlue) or
         (pwmValueWhite != IntensityWhite)) {
-      EEPROM.put(storedLutSize+storedDmxOffsetSize+1, IntensityRed);
-      EEPROM.put(storedLutSize+storedDmxOffsetSize+16+1, IntensityGreen);
-      EEPROM.put(storedLutSize+storedDmxOffsetSize+32+1, IntensityBlue);
-      EEPROM.put(storedLutSize+storedDmxOffsetSize+48+1, IntensityWhite);
+
+      int packed_color[4] = {IntensityRed,IntensityGreen,IntensityBlue,IntensityWhite};
+      EEPROM.put(storedLutSize+storedDmxOffsetSize, packed_color);
       EEPROM.commit();
 
       pwmValueRed = IntensityRed;
