@@ -49,7 +49,8 @@ void RecvUart() {
  */
 void HandleUartCmd() {
   uint IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite;
-  int input_brightness, wb, redin, r_in, g_in, b_in, w_in, wb_in, lx_in, debug_red, debug_temp, lamp_temp, dmx_in;
+  int input_brightness, wb, redin, r_in, g_in, b_in, w_in, wb_in, lx_in, debug_red, debug_temp, lamp_temp, dmx_in, ch_in;
+  int color_ch[11];
   int rgbwx_in[5];
   
   if (UartNewData == true && UartReceivedChars[0] == 'A') {
@@ -68,10 +69,10 @@ void HandleUartCmd() {
         (pwmValueGreen != IntensityGreen) or
         (pwmValueBlue != IntensityBlue) or
         (pwmValueWhite != IntensityWhite)) {
-      EEPROM.put(storedLutSize+storedArtnetOffsetSize+1, IntensityRed);
-      EEPROM.put(storedLutSize+storedArtnetOffsetSize+16+1, IntensityGreen);
-      EEPROM.put(storedLutSize+storedArtnetOffsetSize+32+1, IntensityBlue);
-      EEPROM.put(storedLutSize+storedArtnetOffsetSize+48+1, IntensityWhite);
+      EEPROM.put(storedLutSize+storedDmxOffsetSize+1, IntensityRed);
+      EEPROM.put(storedLutSize+storedDmxOffsetSize+16+1, IntensityGreen);
+      EEPROM.put(storedLutSize+storedDmxOffsetSize+32+1, IntensityBlue);
+      EEPROM.put(storedLutSize+storedDmxOffsetSize+48+1, IntensityWhite);
       EEPROM.commit();
 
       pwmValueRed = IntensityRed;
@@ -148,7 +149,7 @@ void HandleUartCmd() {
     Serial.print(WiFi.macAddress());
     Serial.print("\", ");
 
-    Serial.print("\"Version\":20231215,"); //reversed europen date
+    Serial.print("\"Version\":20231220,"); //reversed europen date
 
     Serial.printf("\"tempC\":%f,", currentTempData*0.125);
     Serial.printf("\"tempTargetC\":%f,", targetTempData*0.125);
@@ -168,10 +169,22 @@ void HandleUartCmd() {
     UartNewData = false;
   }
   if (UartNewData == true && UartReceivedChars[0] == 'D' && UartReceivedChars[1] == 'd') {
-    if(dmxDebugState) {
+    sscanf(UartReceivedChars, "Dd%i ",&dmx_in);
+    if(dmx_in==0) {
       dmxDebugState = false;
     } else {
       dmxDebugState = true;
+    }
+    UartNewData = false;
+  }
+  if (UartNewData == true && UartReceivedChars[0] == 'D' && UartReceivedChars[1] == 'e') {
+    sscanf(UartReceivedChars, "De%i ",&dmx_in);
+    if(dmx_in==0) {
+      Serial.print("\"dmx_enabled\":0*\n");
+      dmx_enable = false;
+    } else {
+      Serial.print("\"dmx_enabled\":1*\n");
+      dmx_enable = true;
     }
     UartNewData = false;
   }
@@ -192,7 +205,78 @@ void HandleUartCmd() {
     }
 
     Serial.printf("\"dmx_offset\":%i \n",DmxOffset);
-    EEPROM.put(sizeof(int)*9*4*6+1,dmx_in);
+    EEPROM.put(storedLutSize+1,dmx_in);
+    EEPROM.commit();
+
+    UartNewData = false;
+  }
+  if (UartNewData == true && UartReceivedChars[0] == 'R' && UartReceivedChars[1] == 'r') {
+    sscanf(UartReceivedChars, "Rr %i", &ch_in);
+    
+    // Check if channels are [0-3]
+    if((ch_in < 0) or (ch_in > 3)) {
+      Serial.print("\"error\":\"Channel must be 0-3 [RGBW]\"*\n");
+      UartNewData = false;
+      return;
+    }
+
+    Serial.printf("\"ch\":%i, \"current_lut\":{%i, %i, %i, %i, %i, :%i, %i, %i, %i, %i, %i}*\n", ch_in, 
+                                                                                              color_calibration_points[ch_in][0],
+                                                                                              color_calibration_points[ch_in][1],
+                                                                                              color_calibration_points[ch_in][2],
+                                                                                              color_calibration_points[ch_in][3],
+                                                                                              color_calibration_points[ch_in][4],
+                                                                                              color_calibration_points[ch_in][5],
+                                                                                              color_calibration_points[ch_in][6],
+                                                                                              color_calibration_points[ch_in][7],
+                                                                                              color_calibration_points[ch_in][8],
+                                                                                              color_calibration_points[ch_in][9],
+                                                                                              color_calibration_points[ch_in][10]
+                                                                                              );
+    EEPROM.get(storedLutSize+storedDmxOffsetSize+storedRgbwSize, color_calibration_points);
+    Serial.printf("\"EEPROM addr\":%i, \"ch\":%i, \"current_lut\":{%i, :%i, %i, %i, %i, :%i, %i, %i, %i, %i, %i}*\n", storedLutSize+storedDmxOffsetSize+storedRgbwSize,
+                                                                                                                  ch_in,
+                                                                                                                  color_calibration_points[ch_in][0],
+                                                                                                                  color_calibration_points[ch_in][1],
+                                                                                                                  color_calibration_points[ch_in][2],
+                                                                                                                  color_calibration_points[ch_in][3],
+                                                                                                                  color_calibration_points[ch_in][4],
+                                                                                                                  color_calibration_points[ch_in][5],
+                                                                                                                  color_calibration_points[ch_in][6],
+                                                                                                                  color_calibration_points[ch_in][7],
+                                                                                                                  color_calibration_points[ch_in][8],
+                                                                                                                  color_calibration_points[ch_in][9],
+                                                                                                                  color_calibration_points[ch_in][10]
+                                                                                                                  );
+    UartNewData = false;
+  }
+  if (UartNewData == true && UartReceivedChars[0] == 'R' && UartReceivedChars[1] == 'w') {
+    sscanf(UartReceivedChars, "Rw %i %i %i %i %i %i %i %i %i %i %i %i", &ch_in, &color_ch[0], &color_ch[1], &color_ch[2], &color_ch[3], &color_ch[4], &color_ch[5], &color_ch[6], &color_ch[7], &color_ch[8], &color_ch[9], &color_ch[10]);
+
+    // Check if channels are [0-3] and all values are within 1-2048 range
+    if((ch_in < 0) or (ch_in > 3)) {
+      Serial.print("\"error\":\"Channel must be 0-3 [RGBW]\"*\n");
+      UartNewData = false;
+      return;
+    }
+    for(int i = 0; i < 11; i++) {
+      if((color_ch[i] > 2048) or (color_ch[i] < 1 )) {
+        Serial.print("\"error\":\"All Red LUT values must be from 1-2048\"*\n");
+        UartNewData = false;
+        return;
+      }
+    }
+
+    // Update Current calibration
+    Serial.printf("\"ch\":%i, {", ch_in);
+    for(int i=0; i<11;i++) {
+      color_calibration_points[ch_in][i] = color_ch[i];
+      Serial.printf("(\"temp\":%f, \"output_scale\": %i), ", temperature_range[i]*0.125, color_calibration_points[ch_in][i]);
+    }
+    Serial.printf("\"write_addr\": %i*\n",storedLutSize+storedDmxOffsetSize+storedRgbwSize);
+
+    // Write value to EEPROM
+    EEPROM.put(storedLutSize+storedDmxOffsetSize+storedRgbwSize, color_calibration_points);
     EEPROM.commit();
 
     UartNewData = false;
@@ -238,7 +322,7 @@ void HandleUartCmd() {
 
     UartNewData = false;
   }
-    if (UartNewData == true && UartReceivedChars[0] == 'C' && UartReceivedChars[1] == 'r') {
+  if (UartNewData == true && UartReceivedChars[0] == 'C' && UartReceivedChars[1] == 'r') {
     sscanf(UartReceivedChars, "Cr%i %i", &wb, &input_brightness);
 
     // Chek WB range

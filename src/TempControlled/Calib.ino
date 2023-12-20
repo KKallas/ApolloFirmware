@@ -11,21 +11,18 @@
  * @return The compensated red color value after temperature compensation (11-bit).
  */
 int calculateRedColor(int redColor, int temperature) {
-  // Define temperature range and corresponding maxRed values
-  int temperature_range[] = {-160, -80, 0, 80, 160, 240, 320, 400, 480, 560, 640};
-  int maxRed_values[] = {1165, 1180, 1204, 1237, 1280, 1337, 1409, 1502, 1622, 1780, 1993};
 
   if (redColor == 0) {
     return 0;
   }
 
   if (temperature > 639) {
-    int scaled_redColor = map(redColor, 0, 2048, 0, 1993);
+    int scaled_redColor = map(redColor, 0, 2048, 0, color_calibration_points[0][10]);
     return scaled_redColor;
   }
 
   if (temperature < -159) {
-    int scaled_redColor = map(redColor, 0, 2048, 0, 1165);
+    int scaled_redColor = map(redColor, 0, 2048, 0, color_calibration_points[0][0]);
     return scaled_redColor;
   }
 
@@ -39,7 +36,7 @@ int calculateRedColor(int redColor, int temperature) {
   }
 
   // Calculate max_val based on the closest lower temperature point
-  int max_val = map(temperature, temperature_range[closest_temperature_index], temperature_range[closest_temperature_index + 1], maxRed_values[closest_temperature_index], maxRed_values[closest_temperature_index + 1]);
+  int max_val = map(temperature, temperature_range[closest_temperature_index], temperature_range[closest_temperature_index + 1], color_calibration_points[0][closest_temperature_index], color_calibration_points[0][closest_temperature_index + 1]);
 
   // Scale the redColor using map
   int scaled_redColor = map(redColor, 0, 2048, 0, max_val);

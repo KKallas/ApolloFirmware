@@ -163,12 +163,12 @@ void set_dmx(int r_in, int g_in, int b_in, int wb_in, int temp_in, bool save) {
     current_calibration_mixed[1] = (g_in - lowest_value) * 8 + current_calibration_mixed[1];
     current_calibration_mixed[2] = (b_in - lowest_value) * 8 + current_calibration_mixed[2];
 
-    // TODO: only if new values
+    // only if new values
     if(save) {
-      EEPROM.put(storedLutSize+storedArtnetOffsetSize+1, current_calibration_mixed[0]);
-      EEPROM.put(storedLutSize+storedArtnetOffsetSize+16+1, current_calibration_mixed[1]);
-      EEPROM.put(storedLutSize+storedArtnetOffsetSize+32+1, current_calibration_mixed[2]);
-      EEPROM.put(storedLutSize+storedArtnetOffsetSize+48+1, current_calibration_mixed[3]);
+      EEPROM.put(storedLutSize+storedDmxOffsetSize+1, current_calibration_mixed[0]);
+      EEPROM.put(storedLutSize+storedDmxOffsetSize+16+1, current_calibration_mixed[1]);
+      EEPROM.put(storedLutSize+storedDmxOffsetSize+32+1, current_calibration_mixed[2]);
+      EEPROM.put(storedLutSize+storedDmxOffsetSize+48+1, current_calibration_mixed[3]);
       EEPROM.commit();
     }
   }

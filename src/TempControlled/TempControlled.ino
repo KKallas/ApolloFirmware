@@ -74,16 +74,18 @@ int pwmValueFan  = 0;
 char UartReceivedChars[64];         // an array to store the received UART data
 boolean UartNewData = false;        // if all characters until newline are recieved
 const int storedLutSize = sizeof(int)*9*5*6;
-const int storedArtnetOffsetSize = 16;
-const int storedRgbwSize = 4*16;
+const int storedDmxOffsetSize = sizeof(int);
+const int storedRgbwSize = 5*sizeof(int);
+const int storedRedLutSize = sizeof(int)*4*11;
+
 
                                     // DMX
 int DmxOffset;                      // Offset from 512 addresses
 dmx_port_t DmxPort = 1;             // Built in serial port HW
 byte DmxData[DMX_PACKET_SIZE];      // DMX packet buffer
 bool DmxIsConnected = false;        // Connected Flag
-int oldDmx[] = {0,0,0,0,0};
-int newDmx[] = {0,0,0,0,0};
+int oldDmx[] = {0,0,0,0,0};         // previous DMX packet RGBtF potion
+int newDmx[] = {0,0,0,0,0};         // last DMX packet to make sure values have changed
 
                                     // Calibration                            
 int current_calibration_A[4] = {0, 0, 0, 0};
@@ -92,9 +94,12 @@ int current_calibration_mixed[4] = {0, 0, 0, 0};
 int intesity_list[9]     = {0, 1, 36, 73, 109, 145, 181,  218,  255}; 
 int intesity_list_log[9] = {0, 1, 32, 64, 128, 256, 512, 1024, 2048};
 int wb_index_list[6] = {0,14,71,100,178,255}; 
+int temperature_range[] = {-160, -80, 0, 80, 160, 240, 320, 400, 480, 560, 640};
 
-int calibration_points[6][9][5];
+int calibration_points[6][9][5];     // Calibartion points [Kelvin 0-5][8-1][Lux,R,G,B,W]
+int color_calibration_points[4][11]; // Temp/Ouptput scale LUT [RGBW][lut point at temp sensor points {-160, -80, 0, 80, 160, 240, 320, 400, 480, 560, 640}]
 bool disable_red_comp = false;
+bool dmx_enable = true;
 
 void ColorUpdate( void * pvParameters ){
  
@@ -213,7 +218,7 @@ void setup() {
                     NULL,           // Task handle.
                     taskCore);      // Core where the task should run
 
-  EEPROM.begin(storedLutSize+storedArtnetOffsetSize+storedRgbwSize);
+  EEPROM.begin(storedLutSize+storedDmxOffsetSize+storedRgbwSize+storedRedLutSize);
 
   // Load Calibartion
   EEPROM.get(0, calibration_points);
@@ -222,10 +227,13 @@ void setup() {
   EEPROM.get(storedLutSize+1,DmxOffset);
 
   // Load Colors
-  EEPROM.get(storedLutSize+storedArtnetOffsetSize+1,pwmValueRed);
-  EEPROM.get(storedLutSize+storedArtnetOffsetSize+16+1,pwmValueGreen);
-  EEPROM.get(storedLutSize+storedArtnetOffsetSize+32+1,pwmValueBlue);
-  EEPROM.get(storedLutSize+storedArtnetOffsetSize+48+1,pwmValueWhite);
+  EEPROM.get(storedLutSize+storedDmxOffsetSize+1,pwmValueRed);
+  EEPROM.get(storedLutSize+storedDmxOffsetSize+16+1,pwmValueGreen);
+  EEPROM.get(storedLutSize+storedDmxOffsetSize+32+1,pwmValueBlue);
+  EEPROM.get(storedLutSize+storedDmxOffsetSize+48+1,pwmValueWhite);
+
+  // Load Red calibartion curve
+  EEPROM.get(storedLutSize+storedDmxOffsetSize+storedRgbwSize,color_calibration_points);
 
   buttonPower.setDebounceTime(50);
   buttonProgram.setDebounceTime(50);
@@ -243,58 +251,60 @@ void tachoRead() {
 void loop() {
   dmx_packet_t packet;
 
-  if (dmx_receive(DmxPort, &packet, DMX_TIMEOUT_TICK)) {
-    if (!packet.err) {
-      if (!DmxIsConnected) {
-        DmxIsConnected = true;
-      }
+  if (dmx_enable) {
+    if (dmx_receive(DmxPort, &packet, DMX_TIMEOUT_TICK)) {
+      if (!packet.err) {
+        if (!DmxIsConnected) {
+          DmxIsConnected = true;
+        }
 
-      // Read DMX and set the color values
-      dmx_read(DmxPort, DmxData, packet.size);
+        // Read DMX and set the color values
+        dmx_read(DmxPort, DmxData, packet.size);
 
-      newDmx[0] = DmxData[1 + DmxOffset];
-      newDmx[1] = DmxData[2 + DmxOffset];
-      newDmx[2] = DmxData[3 + DmxOffset];
-      newDmx[3] = DmxData[4 + DmxOffset];
-      newDmx[4] = DmxData[5 + DmxOffset];
+        newDmx[0] = DmxData[1 + DmxOffset];
+        newDmx[1] = DmxData[2 + DmxOffset];
+        newDmx[2] = DmxData[3 + DmxOffset];
+        newDmx[3] = DmxData[4 + DmxOffset];
+        newDmx[4] = DmxData[5 + DmxOffset];
 
-      // If it is the same packet nothing fruther to do
-      if (arraysAreEqual(newDmx,oldDmx) == true) {
-        return;
-      }
+        // If it is the same packet nothing fruther to do
+        if (arraysAreEqual(newDmx,oldDmx) == true) {
+          return;
+        }
 
-      // Copy to old so it would be possible to check
-      for (int i = 0; i < 5; i++) {
-        oldDmx[i] = newDmx[i];
-      }
+        // Copy to old so it would be possible to check
+        for (int i = 0; i < 5; i++) {
+          oldDmx[i] = newDmx[i];
+        }
 
-      // If no Fan value is provided then (codevalue 0) then use 65C
-      int Fan = newDmx[4];
-      if (Fan == 0) {
-        Fan = 520;
-      } else {
-        targetTempData = map(Fan,1,256,30*8,80*8); // Temp range between 30-80C
-      }
+        // If no Fan value is provided then (codevalue 0) then use 65C
+        int Fan = newDmx[4];
+        if (Fan == 0) {
+          Fan = 520;
+        } else {
+          targetTempData = map(Fan,1,256,30*8,80*8); // Temp range between 30-80C
+        }
 
-      if(dmxDebugState) {
-        Serial.printf("DMX: %i %i %i %i %i\n",newDmx[0], newDmx[1], newDmx[2], newDmx[3], newDmx[4]);
-      }
+        if(dmxDebugState) {
+          Serial.printf("DMX: %i %i %i %i %i\n",newDmx[0], newDmx[1], newDmx[2], newDmx[3], newDmx[4]);
+        }
 
-      if (powerSate && programSate) {
-        set_dmx(newDmx[0], newDmx[1], newDmx[2], newDmx[3], Fan, true);
-        
-        pwmValueRed   = current_calibration_mixed[0];
-        pwmValueGreen = current_calibration_mixed[1];
-        pwmValueBlue  = current_calibration_mixed[2];
-        pwmValueWhite = current_calibration_mixed[3];
-        /* direct passthrough
-        pwmValueRed    = DmxData[1 + DmxOffset];
-        pwmValueGreen  = DmxData[2 + DmxOffset];
-        pwmValueBlue   = DmxData[3 + DmxOffset];
-        pwmValueWhite  = DmxData[4 + DmxOffset];
-        */
-      }
-    } 
+        if (powerSate && programSate) {
+          set_dmx(newDmx[0], newDmx[1], newDmx[2], newDmx[3], Fan, true);
+          
+          pwmValueRed   = current_calibration_mixed[0];
+          pwmValueGreen = current_calibration_mixed[1];
+          pwmValueBlue  = current_calibration_mixed[2];
+          pwmValueWhite = current_calibration_mixed[3];
+          /* direct passthrough
+          pwmValueRed    = DmxData[1 + DmxOffset];
+          pwmValueGreen  = DmxData[2 + DmxOffset];
+          pwmValueBlue   = DmxData[3 + DmxOffset];
+          pwmValueWhite  = DmxData[4 + DmxOffset];
+          */
+        }
+      } 
+    }
   }
 
   int bytesAvailable;
