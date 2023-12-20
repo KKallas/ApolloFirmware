@@ -37,7 +37,7 @@ int calculateRedColor(int redColor, int temperature) {
 
   // Calculate max_val based on the closest lower temperature point
   int max_val = map(temperature, temperature_range[closest_temperature_index], temperature_range[closest_temperature_index + 1], color_calibration_points[0][closest_temperature_index], color_calibration_points[0][closest_temperature_index + 1]);
-
+  //Serial.printf("%i and %i -> %i:%i\n", color_calibration_points[0][closest_temperature_index], color_calibration_points[0][closest_temperature_index + 1],max_val,closest_temperature_index);
   // Scale the redColor using map
   int scaled_redColor = map(redColor, 0, 2048, 0, max_val);
   if (scaled_redColor == 0) {

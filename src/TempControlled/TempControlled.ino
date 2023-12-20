@@ -224,13 +224,15 @@ void setup() {
   EEPROM.get(0, calibration_points);
 
   // Load DMX offset
-  EEPROM.get(storedLutSize+1,DmxOffset);
+  EEPROM.get(storedLutSize,DmxOffset);
 
   // Load Colors
-  EEPROM.get(storedLutSize+storedDmxOffsetSize+1,pwmValueRed);
-  EEPROM.get(storedLutSize+storedDmxOffsetSize+16+1,pwmValueGreen);
-  EEPROM.get(storedLutSize+storedDmxOffsetSize+32+1,pwmValueBlue);
-  EEPROM.get(storedLutSize+storedDmxOffsetSize+48+1,pwmValueWhite);
+  int colors_in[4];
+  EEPROM.get(storedLutSize+storedDmxOffsetSize,colors_in);
+  pwmValueRed = colors_in[0];
+  pwmValueGreen = colors_in[1];
+  pwmValueBlue = colors_in[2];
+  pwmValueWhite = colors_in[3];
 
   // Load Red calibartion curve
   EEPROM.get(storedLutSize+storedDmxOffsetSize+storedRgbwSize,color_calibration_points);
