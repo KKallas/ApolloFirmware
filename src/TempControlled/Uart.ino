@@ -204,7 +204,7 @@ void HandleUartCmd() {
     }
 
     Serial.printf("\"dmx_offset\":%i \n",DmxOffset);
-    EEPROM.put(storedLutSize+1,dmx_in);
+    EEPROM.put(storedLutSize,dmx_in);
     EEPROM.commit();
 
     UartNewData = false;
