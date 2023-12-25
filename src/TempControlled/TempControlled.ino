@@ -303,6 +303,8 @@ void loop() {
         if(packet.size == 511) { // it seemed that it would always occure when the size == 511
           if(dmxDebugState) {
             Serial.print("DMX: ignoring 511bit broken packet\n");
+            Serial.printf("\"DMX\": [%i, %i, %i, %i, %i, %i], \"packet_size\":%i, \"dmx_startcode\":%i\n",DmxData[1],DmxData[2],DmxData[3],DmxData[4],DmxData[5],
+                                                                                                          packet.size, packet.sc);
           }
         } else {
 
@@ -346,10 +348,10 @@ void loop() {
           }
 
           if(dmxDebugState) {
-            Serial.printf("DMX: %i %i %i %i %i (%i)-> %i %i %i %i TempTarget: %i, offset: %i, packet_size:%i\n",
+            Serial.printf("\"DMX\": [%i, %i, %i, %i, %i, %i], \"red_val\":%i, \"green_val\":%i, \"blue_val\":%i, \"white_val\":%i, \"TempTarget\":%i, \"offset\":%i, \"packet_size\":%i, \"dmx_startcode\":%i\n",
                                                                                 newDmx[0], newDmx[1], newDmx[2], newDmx[3], newDmx[4], DmxData[6],
                                                                                 pwmValueRed, pwmValueGreen, pwmValueBlue, pwmValueWhite, 
-                                                                                targetTempData, DmxOffset, packet.size);
+                                                                                targetTempData, DmxOffset, packet.size, packet.sc);
           }
         }
       } 
