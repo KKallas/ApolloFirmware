@@ -134,6 +134,13 @@ int findLastSmallerWb(int inputWb) {
 
 
 void set_dmx(int r_in, int g_in, int b_in, int wb_in, int temp_in, bool save) {
+  if ((r_in==0) && (g_in==0) && (b_in==0)) {
+    current_calibration_mixed[0] = 0;
+    current_calibration_mixed[1] = 0;
+    current_calibration_mixed[2] = 0;
+    current_calibration_mixed[3] = 0;
+    return;
+  }
   // Make sure that red compensation is enabled, otherwise red output will drift based on lamp temperature
   disable_red_comp = false;
   // Initialize lowest_value with r_in initially
@@ -149,24 +156,16 @@ void set_dmx(int r_in, int g_in, int b_in, int wb_in, int temp_in, bool save) {
     lowest_value = b_in;
   }
 
-  if ((r_in==0) && (g_in==0) && (b_in==0)) {
-    current_calibration_mixed[0] = 0;
-    current_calibration_mixed[1] = 0;
-    current_calibration_mixed[2] = 0;
-    current_calibration_mixed[3] = 0;
-  }
-  else {
-    update_calib(lowest_value, wb_in);
-    // Mix in the color
-    // TODO: convert the RGB gamma, use LUT instead of multiply
-    current_calibration_mixed[0] = (r_in - lowest_value) * 8 + current_calibration_mixed[0];
-    current_calibration_mixed[1] = (g_in - lowest_value) * 8 + current_calibration_mixed[1];
-    current_calibration_mixed[2] = (b_in - lowest_value) * 8 + current_calibration_mixed[2];
+  update_calib(lowest_value, wb_in);
+  // Mix in the color
+  // TODO: convert the RGB gamma, use LUT instead of multiply
+  current_calibration_mixed[0] = (r_in - lowest_value) * 8 + current_calibration_mixed[0];
+  current_calibration_mixed[1] = (g_in - lowest_value) * 8 + current_calibration_mixed[1];
+  current_calibration_mixed[2] = (b_in - lowest_value) * 8 + current_calibration_mixed[2];
 
-    // only if new values
-    if(save) {
-      EEPROM.put(storedLutSize+storedDmxOffsetSize, current_calibration_mixed);
-      EEPROM.commit();
-    }
+  // only if new values
+  if(save) {
+    EEPROM.put(storedLutSize+storedDmxOffsetSize, current_calibration_mixed);
+    EEPROM.commit();
   }
 }

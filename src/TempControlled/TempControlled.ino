@@ -67,7 +67,7 @@ bool overheated;
                                     // FAN
 int FanSpeed = 0;
 int FanSpeedStep = 128;
-int targetTempData  = 520;          // Temp we are aiming to keep the lamp in (200-640) val*0.125 = temp in Celsius
+int targetTempData  = 520;          // Temp we are aiming to keep the lamp in (200-640) val*0.125 = temp in Celsius 65C
 int pwmValueFan  = 0;
 
                                     // UART
@@ -82,7 +82,7 @@ const int storedRedLutSize = sizeof(int)*4*11;
                                     // DMX
 int DmxOffset;                      // Offset from 512 addresses
 dmx_port_t DmxPort = 1;             // Built in serial port HW
-byte DmxData[DMX_PACKET_SIZE];      // DMX packet buffer
+byte DmxData[6];      // DMX packet buffer
 bool DmxIsConnected = false;        // Connected Flag
 int oldDmx[] = {0,0,0,0,0};         // previous DMX packet RGBtF potion
 int newDmx[] = {0,0,0,0,0};         // last DMX packet to make sure values have changed
@@ -100,8 +100,35 @@ int calibration_points[6][9][5];     // Calibartion points [Kelvin 0-5][8-1][Lux
 int color_calibration_points[4][11]; // Temp/Ouptput scale LUT [RGBW][lut point at temp sensor points {-160, -80, 0, 80, 160, 240, 320, 400, 480, 560, 640}]
 bool disable_red_comp = false;
 bool dmx_enable = true;
+int UartbytesAvailable;
 
-void ColorUpdate( void * pvParameters ){
+
+void UartComm(void * pvParameters) {
+  for(;;) {
+    String taskMessage = "Running color updater on: ";
+    taskMessage = taskMessage + xPortGetCoreID();
+
+    now = millis();
+
+    if (now - lastUpdate > 5000) {
+      fanRpm = tachoCount * 60 / 5 / tachFanPulses; 
+      tachoCount = 0;
+      readTemp();
+      updateFanSpeed();           
+      //Serial.printf("time:%i,dmx_fan:%02X,dmx_val:%02X,temp:%f\n", lastUpdate, data[511], data[512],temperatureData*0.125);
+      //Serial.printf("time:%i\n", lastUpdate);
+      //Serial.printf("TempArray:%i,%i,%i,%i,%i, valueSelected:%i\n", sortedArray[0], sortedArray[1], sortedArray[2], sortedArray[3], sortedArray[4], currentTempData);
+
+      lastUpdate = now;
+    }
+    // Add loop to handle UART input and output
+    RecvUart();
+    HandleUartCmd();
+    delayMicroseconds(100);
+  }
+}
+
+void ColorUpdate(void * pvParameters){
  
     String taskMessage = "Running color updater on: ";
     taskMessage = taskMessage + xPortGetCoreID();
@@ -212,11 +239,22 @@ void setup() {
   xTaskCreatePinnedToCore(
                     ColorUpdate,    // Function to implement the task
                     "ColorUpdate",  // Name of the task
-                    10000,          // Stack size in words
+                    10000,           // Stack size in words
                     NULL,           // Task input parameter
                     0,              // Priority of the task
                     NULL,           // Task handle.
                     taskCore);      // Core where the task should run
+
+                                // UART communications
+  xTaskCreatePinnedToCore(
+                    UartComm,       // Function to implement the task
+                    "UartCommHandeler",  // Name of the task
+                    10000,          // Stack size in words
+                    NULL,           // Task input parameter
+                    0,              // Priority of the task
+                    NULL,           // Task handle.
+                    1);             // Core where the task should run [0 empty core, 1 admin core]
+  
 
   EEPROM.begin(storedLutSize+storedDmxOffsetSize+storedRgbwSize+storedRedLutSize);
 
@@ -261,72 +299,62 @@ void loop() {
         }
 
         // Read DMX and set the color values
-        dmx_read(DmxPort, DmxData, packet.size);
-
-        newDmx[0] = DmxData[1 + DmxOffset];
-        newDmx[1] = DmxData[2 + DmxOffset];
-        newDmx[2] = DmxData[3 + DmxOffset];
-        newDmx[3] = DmxData[4 + DmxOffset];
-        newDmx[4] = DmxData[5 + DmxOffset];
-
-        // If it is the same packet nothing fruther to do
-        if (arraysAreEqual(newDmx,oldDmx) == true) {
-          return;
-        }
-
-        // Copy to old so it would be possible to check
-        for (int i = 0; i < 5; i++) {
-          oldDmx[i] = newDmx[i];
-        }
-
-        // If no Fan value is provided then (codevalue 0) then use 65C
-        int Fan = newDmx[4];
-        if (Fan == 0) {
-          Fan = 520;
+        dmx_read_offset(DmxPort, DmxOffset, DmxData, 7);
+        if(packet.size == 511) { // it seemed that it would always occure when the size == 511
+          if(dmxDebugState) {
+            Serial.print("DMX: ignoring 511bit broken packet\n");
+          }
         } else {
-          targetTempData = map(Fan,1,256,30*8,80*8); // Temp range between 30-80C
-        }
 
-        if(dmxDebugState) {
-          Serial.printf("DMX: %i %i %i %i %i\n",newDmx[0], newDmx[1], newDmx[2], newDmx[3], newDmx[4]);
-        }
+          newDmx[0] = DmxData[1];
+          newDmx[1] = DmxData[2];
+          newDmx[2] = DmxData[3];
+          newDmx[3] = DmxData[4];
+          newDmx[4] = DmxData[5];
 
-        if (powerSate && programSate) {
-          set_dmx(newDmx[0], newDmx[1], newDmx[2], newDmx[3], Fan, true);
+          // If it is the same packet nothing fruther to do
+          if (arraysAreEqual(newDmx,oldDmx) == true) {
+            return;
+          }
+
           
-          pwmValueRed   = current_calibration_mixed[0];
-          pwmValueGreen = current_calibration_mixed[1];
-          pwmValueBlue  = current_calibration_mixed[2];
-          pwmValueWhite = current_calibration_mixed[3];
-          /* direct passthrough
-          pwmValueRed    = DmxData[1 + DmxOffset];
-          pwmValueGreen  = DmxData[2 + DmxOffset];
-          pwmValueBlue   = DmxData[3 + DmxOffset];
-          pwmValueWhite  = DmxData[4 + DmxOffset];
-          */
+          // Copy to old so it would be possible to check
+          for (int i = 0; i < 5; i++) {
+            oldDmx[i] = newDmx[i];
+          }
+
+          // If no Fan value is provided then (codevalue 0) then use 65C
+          int Fan = newDmx[4];
+          if (Fan == 0) {
+            targetTempData = 520;
+          } else {
+            targetTempData = map(Fan,1,256,30*8,80*8); // Temp range between 30-80C
+          }
+
+          if (powerSate && programSate) {
+            set_dmx(newDmx[0], newDmx[1], newDmx[2], newDmx[3], Fan, true);
+            pwmValueRed   = current_calibration_mixed[0];
+            pwmValueGreen = current_calibration_mixed[1];
+            pwmValueBlue  = current_calibration_mixed[2];
+            pwmValueWhite = current_calibration_mixed[3];
+            /* direct passthrough
+            pwmValueRed    = DmxData[1 + DmxOffset];
+            pwmValueGreen  = DmxData[2 + DmxOffset];
+            pwmValueBlue   = DmxData[3 + DmxOffset];
+            pwmValueWhite  = DmxData[4 + DmxOffset];
+            */
+          }
+
+          if(dmxDebugState) {
+            Serial.printf("DMX: %i %i %i %i %i (%i)-> %i %i %i %i TempTarget: %i, offset: %i, packet_size:%i\n",
+                                                                                newDmx[0], newDmx[1], newDmx[2], newDmx[3], newDmx[4], DmxData[6],
+                                                                                pwmValueRed, pwmValueGreen, pwmValueBlue, pwmValueWhite, 
+                                                                                targetTempData, DmxOffset, packet.size);
+          }
         }
       } 
     }
   }
-
-  int bytesAvailable;
-  now = millis();
-
-  if (now - lastUpdate > 5000) {
-    fanRpm = tachoCount * 60 / 5 / tachFanPulses; 
-    tachoCount = 0;
-    readTemp();
-    updateFanSpeed();           
-    //Serial.printf("time:%i,dmx_fan:%02X,dmx_val:%02X,temp:%f\n", lastUpdate, data[511], data[512],temperatureData*0.125);
-    //Serial.printf("time:%i\n", lastUpdate);
-    //Serial.printf("TempArray:%i,%i,%i,%i,%i, valueSelected:%i\n", sortedArray[0], sortedArray[1], sortedArray[2], sortedArray[3], sortedArray[4], currentTempData);
-
-    lastUpdate = now;
-  }
-  // Add loop to handle UART input and output
-  RecvUart();
-  HandleUartCmd();
-  usleep(10);
 }
 
 
