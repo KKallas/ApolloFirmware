@@ -1,5 +1,6 @@
 #include <Arduino.h>
-#include <esp_dmx.h> // 3.0.3 beta
+//#include <esp_dmx.h> // 3.0.3 beta
+#include <HardwareSerial.h>
 #include <Wire.h>
 #include <limits.h>
 #include <WiFi.h> // Only for MAC id
@@ -81,7 +82,7 @@ const int storedRedLutSize = sizeof(int)*4*11;
 
                                     // DMX
 int DmxOffset;                      // Offset from 512 addresses
-dmx_port_t DmxPort = 1;             // Built in serial port HW
+HardwareSerial DMXSerial(1);
 byte DmxData[6];      // DMX packet buffer
 bool DmxIsConnected = false;        // Connected Flag
 int oldDmx[] = {0,0,0,0,0};         // previous DMX packet RGBtF potion
@@ -228,10 +229,6 @@ void setup() {
                                 /* I2C */
   Wire.begin(I2cSdaPin, I2cSclPin);         // Wire needs always 2 pins
 
-                                /* 485(DMX) */
-
-  dmx_driver_install(DmxPort, DMX_DEFAULT_INTR_FLAGS);
-  dmx_set_pin(DmxPort, 0, DmxReceivePin, 0);
 
                                 // Color Update 
                                     // 2nd core is used perly for the update and calibration
@@ -281,6 +278,9 @@ void setup() {
   // Fan Tacho
   attachInterrupt(TachoPin, tachoRead, FALLING);
 
+  // 485(DMX) 
+  DMXSerial.begin(250000, SERIAL_8N2, 26, -1);
+
   Serial.print("Welcome to Apollo lamp to use the terminal\n");
 }
 
@@ -288,74 +288,104 @@ void tachoRead() {
   tachoCount += 1;
 }
 
+unsigned long lastBreak = millis();
+unsigned long lastDmx;
+bool newFrame = false;
+bool oddFrame = true;
+int array_index = 0;
+char packet_content[513];
+
 void loop() {
-  dmx_packet_t packet;
-
+  int start_code; 
+  int currByte = 0;
+  int serialBufferCount = 0;
+  
   if (dmx_enable) {
-    if (dmx_receive(DmxPort, &packet, DMX_TIMEOUT_TICK)) {
-      if (!packet.err) {
-        if (!DmxIsConnected) {
-          DmxIsConnected = true;
+    serialBufferCount = DMXSerial.available();
+    if (millis() - lastBreak > 100) { // This duration might need to be adjusted
+      //newFrame = true;
+      lastBreak = millis();
+      //Serial.printf("buffer: %i\n", serialBufferCount);
+      if (serialBufferCount>0) {
+        if (array_index == 513) {
+          Serial.printf("DMX packet time: %i\n", millis() - lastDmx);
+          lastDmx = millis();
+          Serial.printf("full dmx packet: %i %i %i %i %i\n", packet_content[0],packet_content[1],packet_content[2],packet_content[3], packet_content[4]);
+          array_index = 0;
         }
+        
+        //DMXSerial.read(); // Read and ignore start code
 
-        // Read DMX and set the color values
-        dmx_read_offset(DmxPort, DmxOffset, DmxData, 7);
-        if(packet.size == 511) { // it seemed that it would always occure when the size == 511
-          if(dmxDebugState) {
-            Serial.print("DMX: ignoring 511bit broken packet\n");
-            Serial.printf("\"DMX\": [%i, %i, %i, %i, %i, %i], \"packet_size\":%i, \"dmx_startcode\":%i\n",DmxData[1],DmxData[2],DmxData[3],DmxData[4],DmxData[5],
-                                                                                                          packet.size, packet.sc);
+        //start_code = DMXSerial.read();
+        while(currByte < serialBufferCount) { // 500ms timeout
+          // Dedect break condition and abandon frame
+          if(array_index == 513) {
+            break;
           }
-        } else {
-
-          newDmx[0] = DmxData[1];
-          newDmx[1] = DmxData[2];
-          newDmx[2] = DmxData[3];
-          newDmx[3] = DmxData[4];
-          newDmx[4] = DmxData[5];
-
-          // If it is the same packet nothing fruther to do
-          if (arraysAreEqual(newDmx,oldDmx) == true) {
-            return;
-          }
-
-          
-          // Copy to old so it would be possible to check
-          for (int i = 0; i < 5; i++) {
-            oldDmx[i] = newDmx[i];
-          }
-
-          // If no Fan value is provided then (codevalue 0) then use 65C
-          int Fan = newDmx[4];
-          if (Fan == 0) {
-            targetTempData = 520;
-          } else {
-            targetTempData = map(Fan,1,256,30*8,80*8); // Temp range between 30-80C
-          }
-
-          if (powerSate && programSate) {
-            set_dmx(newDmx[0], newDmx[1], newDmx[2], newDmx[3], Fan, true);
-            pwmValueRed   = current_calibration_mixed[0];
-            pwmValueGreen = current_calibration_mixed[1];
-            pwmValueBlue  = current_calibration_mixed[2];
-            pwmValueWhite = current_calibration_mixed[3];
-            /* direct passthrough
-            pwmValueRed    = DmxData[1 + DmxOffset];
-            pwmValueGreen  = DmxData[2 + DmxOffset];
-            pwmValueBlue   = DmxData[3 + DmxOffset];
-            pwmValueWhite  = DmxData[4 + DmxOffset];
-            */
-          }
-
-          if(dmxDebugState) {
-            Serial.printf("\"DMX\": [%i, %i, %i, %i, %i, %i], \"red_val\":%i, \"green_val\":%i, \"blue_val\":%i, \"white_val\":%i, \"TempTarget\":%i, \"offset\":%i, \"packet_size\":%i, \"dmx_startcode\":%i\n",
-                                                                                newDmx[0], newDmx[1], newDmx[2], newDmx[3], newDmx[4], DmxData[6],
-                                                                                pwmValueRed, pwmValueGreen, pwmValueBlue, pwmValueWhite, 
-                                                                                targetTempData, DmxOffset, packet.size, packet.sc);
-          }
+          packet_content[array_index] = DMXSerial.read();
+          if(packet_content[array_index]!=0) {
+            Serial.printf("currByte[%i]: %i\n", array_index, packet_content[array_index]);
+            }
+          currByte++;
+          array_index++;
         }
-      } 
+      } else {
+        Serial.printf("break\n");
+      }
+      //DMXSerial.flush();
+      
+      //Serial.printf("currByte: %i\n", array_index);
+  /*
+      newDmx[0] = DmxData[0];
+      newDmx[1] = DmxData[1];
+      newDmx[2] = DmxData[2];
+      newDmx[3] = DmxData[3];
+      newDmx[4] = DmxData[4];
+
+      // If it is the same packet nothing fruther to do
+      if (arraysAreEqual(newDmx,oldDmx) == true) {
+        return;
+      }
+
+      
+      // Copy to old so it would be possible to check
+      for (int i = 0; i < 5; i++) {
+        oldDmx[i] = newDmx[i];
+      }
+
+      // If no Fan value is provided then (codevalue 0) then use 65C
+      int Fan = newDmx[4];
+      if (Fan == 0) {
+        targetTempData = 520;
+      } else {
+        targetTempData = map(Fan,1,256,30*8,80*8); // Temp range between 30-80C
+      }
+
+      if (powerSate && programSate) {
+        set_dmx(newDmx[0], newDmx[1], newDmx[2], newDmx[3], Fan, true);
+        pwmValueRed   = current_calibration_mixed[0];
+        pwmValueGreen = current_calibration_mixed[1];
+        pwmValueBlue  = current_calibration_mixed[2];
+        pwmValueWhite = current_calibration_mixed[3];
+        // direct passthrough
+        //pwmValueRed    = DmxData[1 + DmxOffset];
+        //pwmValueGreen  = DmxData[2 + DmxOffset];
+        //pwmValueBlue   = DmxData[3 + DmxOffset];
+        //pwmValueWhite  = DmxData[4 + DmxOffset];
+        //
+      }
+
+      if(dmxDebugState) {
+        Serial.printf("\"DMX\": [%i, %i, %i, %i, %i, %i], \"red_val\":%i, \"green_val\":%i, \"blue_val\":%i, \"white_val\":%i, \"TempTarget\":%i, \"offset\":%i, \"start_code\":%i, \"len\":%i\n",
+                                                                            newDmx[0], newDmx[1], newDmx[2], newDmx[3], newDmx[4], DmxData[6],
+                                                                            pwmValueRed, pwmValueGreen, pwmValueBlue, pwmValueWhite, 
+                                                                            targetTempData, DmxOffset, start_code, index);
+      }
+    } else {
+      delayMicroseconds(10000);
     }
+    */
+    } 
   }
 }
 
