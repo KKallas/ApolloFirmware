@@ -1,3 +1,31 @@
+void TempUpdate(void * pvParameters) {
+  String taskMessage = "Running temp on: ";
+  taskMessage = taskMessage + xPortGetCoreID();
+
+  while(true) {
+    // Add loop to handle UART input and output
+    now = millis();
+
+    if (now - lastUpdate > 5000) {
+      fanRpm = tachoCount * 60 / 5 / tachFanPulses; 
+      tachoCount = 0;
+      readTemp();
+      updateFanSpeed();           
+
+      lastUpdate = now;
+    }
+    delayMicroseconds(10);
+  }
+}
+
+
+
+
+
+void tachoRead() {
+  tachoCount += 1;
+}
+
 /**
  * Reads temperature data from an I2C device and inserts it into the TempArray.
  *
@@ -45,6 +73,28 @@ void insertIntoTempArray(int newValue) {
   if (currentTempData > 85*8) {                          // 85C 0.125C one unit
     overheated = true;
   }          
+}
+
+// TempTarget if smaller then slow fan down a bit if higher speed fan up a bit once every 10 seconds?
+// I should split this into steps just like the interpüolated output
+void updateFanSpeed() {
+  int diff = currentTempData - targetTempData;
+
+  // add or emove a step
+  if (diff < (1*8)) {                 // 1C is 8 codevalues
+    pwmValueFan = pwmValueFan - FanSpeedStep;
+  }
+  if (diff > (1*8)) {                 // 1C is 8 codevalues
+    pwmValueFan = pwmValueFan + FanSpeedStep;
+  }
+
+  // clip the limits
+  if (pwmValueFan < 0) {
+    pwmValueFan = 0;
+  }
+  if (pwmValueFan > 2047) {
+    pwmValueFan = 2047;
+  }
 }
 
 /**

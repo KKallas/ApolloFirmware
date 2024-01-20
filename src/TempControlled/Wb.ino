@@ -1,3 +1,104 @@
+void ColorUpdate(void * pvParameters){
+ 
+    String taskMessage = "Running color updater on: ";
+    taskMessage = taskMessage + xPortGetCoreID();
+
+    ledcSetup(0, pwmFrequency, pwmResolution); // Configure PWM
+    ledcSetup(1, pwmFrequency, pwmResolution); 
+    ledcSetup(2, pwmFrequency, pwmResolution); 
+    ledcSetup(3, pwmFrequency, pwmResolution); 
+    ledcSetup(4, pwmFrequency, pwmResolution); 
+    ledcAttachPin(redPin, 0);
+    ledcAttachPin(greenPin, 1);
+    ledcAttachPin(bluePin, 2);
+    ledcAttachPin(whitePin, 3);
+    ledcAttachPin(fanPin, 4);
+
+    while(true){
+      // Overheting protection/Red comp disbale option 
+      if (overheated == false) {    
+
+        // Red comp with disable option, all other than redcalib should set disable_red_comp = false;
+        if (disable_red_comp==true) {
+          compRedVal = pwmValueRed;
+        } else {
+          compRedVal = calculateRedColor(pwmValueRed, currentTempData);
+        }
+
+        if (powerSate) {
+          ledcWrite(0, compRedVal);
+          ledcWrite(1, pwmValueGreen);
+          ledcWrite(2, pwmValueBlue);
+          ledcWrite(3, pwmValueWhite);
+        } else {
+          ledcWrite(0, 0);
+          ledcWrite(1, 0);
+          ledcWrite(2, 0);
+          ledcWrite(3, 0);
+        }
+        ledcWrite(4, pwmValueFan);
+      } else {
+        ledcWrite(0, 0);
+        ledcWrite(1, 0);
+        ledcWrite(2, 0);
+        ledcWrite(3, 0);
+        ledcWrite(4, 2047);
+      }
+      // Wait for next update
+      delayMicroseconds(1000000 / (blinkFrequency)); 
+    }
+ 
+}
+
+
+/**
+ * Calculate the compensated red color value based on temperature.
+ *
+ * This function calculates the compensated red color value for an LED based on the provided red color value and the temperature.
+ * LEDs tend to output less light at higher temperatures. The function uses temperature compensation to adjust the red color value
+ * proportionally to the temperature difference from a reference temperature. The compensation is performed by altering the red color
+ * value based on a theoretical maximum value, the actual red color value, and the temperature offset.
+ *
+ * @param redColor The original red color value (11-bit).
+ * @param temperature The temperature value for which compensation is calculated.
+ * @return The compensated red color value after temperature compensation (11-bit).
+ */
+int calculateRedColor(int redColor, int temperature) {
+
+  if (redColor == 0) {
+    return 0;
+  }
+
+  if (temperature > 639) {
+    int scaled_redColor = map(redColor, 0, 2048, 0, color_calibration_points[0][10]);
+    return scaled_redColor;
+  }
+
+  if (temperature < -159) {
+    int scaled_redColor = map(redColor, 0, 2048, 0, color_calibration_points[0][0]);
+    return scaled_redColor;
+  }
+
+  // Find the closest lower temp point
+  int closest_temperature_index = 0;
+  for (int i = 1; i < 11; i++) {
+    if (temperature < temperature_range[i]) {
+      closest_temperature_index = i - 1; // Use the previous index
+      break;
+    }
+  }
+
+  // Calculate max_val based on the closest lower temperature point
+  int max_val = map(temperature, temperature_range[closest_temperature_index], temperature_range[closest_temperature_index + 1], color_calibration_points[0][closest_temperature_index], color_calibration_points[0][closest_temperature_index + 1]);
+  //Serial.printf("%i and %i -> %i:%i\n", color_calibration_points[0][closest_temperature_index], color_calibration_points[0][closest_temperature_index + 1],max_val,closest_temperature_index);
+  // Scale the redColor using map
+  int scaled_redColor = map(redColor, 0, 2048, 0, max_val);
+  if (scaled_redColor == 0) {
+    scaled_redColor = 1;
+  }
+  return scaled_redColor;
+}
+
 /**
  * Update LED Lamp Calibration
  *
@@ -133,7 +234,7 @@ int findLastSmallerWb(int inputWb) {
 }
 
 
-void set_dmx(int r_in, int g_in, int b_in, int wb_in, int temp_in, bool save) {
+void set_RGBt(int r_in, int g_in, int b_in, int wb_in, int temp_in, bool save) {
   if ((r_in==0) && (g_in==0) && (b_in==0)) {
     current_calibration_mixed[0] = 0;
     current_calibration_mixed[1] = 0;

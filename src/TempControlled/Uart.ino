@@ -1,11 +1,61 @@
 /**
+ * Uart thread function
+ * 
+ * Get new data and process it in the pipeline, if applicable send an answer
+*/
+/*void UartComm(void * pvParameters) {
+  //String taskMessage = "Running color updater on: ";
+  //taskMessage = taskMessage + xPortGetCoreID();
+
+  while(true) {
+    buttonPower.loop();
+    buttonProgram.loop();
+    
+    if (buttonPower.isPressed()) {
+      if (powerSate) {
+        powerSate = false;
+      } else {
+        powerSate = true;
+      }
+    }
+
+    if(buttonProgram.isPressed()) {
+      if (programSate) {
+        programSate = false;
+        lastRGBW[0] = pwmValueRed;
+        lastRGBW[1] = pwmValueGreen;
+        lastRGBW[2] = pwmValueBlue;
+        lastRGBW[3] = pwmValueWhite;
+        set_RGBt(255,255,255,100,0,false);
+        pwmValueRed = current_calibration_mixed[0];
+        pwmValueGreen = current_calibration_mixed[1];
+        pwmValueBlue = current_calibration_mixed[2];
+        pwmValueWhite = current_calibration_mixed[3];
+      } else {
+        programSate = true;
+        pwmValueRed = lastRGBW[0];
+        pwmValueGreen = lastRGBW[1];
+        pwmValueBlue = lastRGBW[2];
+        pwmValueWhite = lastRGBW[3];
+      }
+    }
+
+    // Add loop to handle UART input and output
+    RecvUart();
+    HandleUartCmd();
+    delayMicroseconds(10);
+  }
+}
+
+*/
+/**
  * Receives UART data and processes it to identify the end of a message.
  *
  * This function reads incoming UART characters and detects the end of a message marked by the 'endMarker' character.
  * It buffers the received characters until the end of the message is detected. Upon receiving the end of the message,
  * it marks the availability of new data by setting the 'UartNewData' flag to true.
  */
-void RecvUart() {
+/*void RecvUart() {
   static byte ndx = 0;
   char endMarker = '\n';
   char rc;
@@ -30,23 +80,13 @@ void RecvUart() {
     }
   }
 }
-
+*/
 // TODO: needs update
 /**
  * Handles UART commands and updates color and fan intensity values.
  *
- * This function processes the received UART data for three specific commands: 
- * - For the 'A' command:
- *   - Extracts color channel and fan intensity values from the UART data (A%i %i %i %i %i) R,G,B,W,Ttarget.
- *   - Prints the response to UART, including extracted values and current temperature.
- *   - Updates the corresponding color intensity values and fan intensity based on extracted values.
- * - For the 'I' command:
- *   - Duplicate of DMX in to test WB input with Fan (I%i %i %i %i %i) R,G,B,Wb,Ttarget
- * - For the 'T' command:
- *   - For various testing purposes
- * - For the 'M' command:
- *   - Gets lamp mac id
  */
+ /*
 void HandleUartCmd() {
   uint IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite;
   int input_brightness, wb, redin, r_in, g_in, b_in, w_in, wb_in, lx_in, debug_red, debug_temp, lamp_temp, dmx_in, ch_in;
@@ -94,7 +134,7 @@ void HandleUartCmd() {
   if (UartNewData == true && UartReceivedChars[0] == 'I') {
     if (programSate && powerSate) {
       sscanf(UartReceivedChars, "I%i %i %i %i %i %i", &r_in, &g_in, &b_in, &wb_in, &lamp_temp);
-      set_dmx(r_in, g_in, b_in, wb_in, 0, true);
+      set_RGBt(r_in, g_in, b_in, wb_in, 0, true);
       pwmValueRed = current_calibration_mixed[0];
       pwmValueGreen = current_calibration_mixed[1];
       pwmValueBlue = current_calibration_mixed[2];
@@ -155,12 +195,6 @@ void HandleUartCmd() {
     Serial.printf("\"fanPower\":%i,", pwmValueFan);
     Serial.printf("\"fanRPM\":%i,", fanRpm);
 
-    Serial.printf("\"DmxR\":%i,", DmxData[1 + DmxOffset]);
-    Serial.printf("\"DmxG\":%i,", DmxData[2 + DmxOffset]);
-    Serial.printf("\"DmxB\":%i,", DmxData[3 + DmxOffset]);
-    Serial.printf("\"DmxWb\":%i,", DmxData[4 + DmxOffset]);
-    Serial.printf("\"DmxTempTarget\":%i,", DmxData[5 + DmxOffset]);
-
     Serial.printf("\"calA\":(%i, %i, %i, %i), ", current_calibration_A[0], current_calibration_A[1], current_calibration_A[2], current_calibration_A[3]);
     Serial.printf("\"calB\":(%i, %i, %i, %i), ", current_calibration_B[0],  current_calibration_B[1],  current_calibration_B[2],  current_calibration_B[3]);
     Serial.printf("\"calMixed\":(%i,%i,%i,%i)\n", current_calibration_mixed[0], current_calibration_mixed[1], current_calibration_mixed[2], current_calibration_mixed[3]);
@@ -174,39 +208,6 @@ void HandleUartCmd() {
     } else {
       dmxDebugState = true;
     }
-    UartNewData = false;
-  }
-  if (UartNewData == true && UartReceivedChars[0] == 'D' && UartReceivedChars[1] == 'e') {
-    sscanf(UartReceivedChars, "De%i ",&dmx_in);
-    if(dmx_in==0) {
-      Serial.print("\"dmx_enabled\":0*\n");
-      dmx_enable = false;
-    } else {
-      Serial.print("\"dmx_enabled\":1*\n");
-      dmx_enable = true;
-    }
-    UartNewData = false;
-  }
-  if (UartNewData == true && UartReceivedChars[0] == 'D' && UartReceivedChars[1] == 'r') {
-    Serial.printf("\"dmx_offset\":%i \n", DmxOffset);
-    UartNewData = false;
-  }
-  if (UartNewData == true && UartReceivedChars[0] == 'D' && UartReceivedChars[1] == 'w') {
-    sscanf(UartReceivedChars, "Dw %d", &dmx_in);
-    DmxOffset = dmx_in;
-    
-    // Clip input values
-    if (dmx_in < 0) {
-      dmx_in = 0;
-    }
-    if (dmx_in > 511) {
-      dmx_in = 511;
-    }
-
-    Serial.printf("\"dmx_offset\":%i \n",DmxOffset);
-    EEPROM.put(storedLutSize,dmx_in);
-    EEPROM.commit();
-
     UartNewData = false;
   }
   if (UartNewData == true && UartReceivedChars[0] == 'R' && UartReceivedChars[1] == 'r') {
@@ -382,3 +383,4 @@ void HandleUartCmd() {
     UartNewData = false;
   }
 }
+*/
