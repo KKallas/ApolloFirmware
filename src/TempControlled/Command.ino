@@ -3,6 +3,50 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
   //sprintf(printout, "%i/%i, cmd: %i params: %s", CurrCommandNr, TotalCommands - 2, command, Params);
   //SendUartCmd(String(printout), true);
 
+  // Command 00 : GetInfo()
+  if (command==0) {
+    int page;
+    // split up params
+    char paramsCharArray[64];
+    Params.toCharArray(paramsCharArray, Params.length()+1);
+    // parse parameters
+    if (sscanf(paramsCharArray, "%i", &page) != 1) {
+      // TODO: value range check
+      SendUartCmd("ERROR: correct input format DS00->%i", true);
+      return;
+    }
+    // MacId
+    String MacIdString = String(WiFi.macAddress());
+    //MacIdString.replace(':', '|');
+    
+    // Temperature
+    String CurrentTempString = String(currentTempData*0.125);
+    String TargetTempString = String(targetTempData*0.125);
+    String FanPowerString = String(pwmValueFan);
+    String FanRPMString = String(fanRpm);
+    String UncalibRedString = String(compRedVal);
+
+    // Current Color
+    String CurrentColorString = "RGBW("+String(pwmValueRed)+":"+String(pwmValueGreen)+":"+String(pwmValueBlue)+":"+String(pwmValueWhite)+")";
+
+    // RGBt calibration LUT and last value
+    // Using pages for simpler handling, page 0 will display all pages other will go accordignly
+
+    String CalAString = "RGBW("+String(current_calibration_A[0])+":"+String(current_calibration_A[1])+":"+String(current_calibration_A[2])+":"+String(current_calibration_A[3])+")";
+    String CalBString = "RGBW("+String(current_calibration_B[0])+":"+String(current_calibration_B[1])+":"+String(current_calibration_B[2])+":"+String(current_calibration_B[3])+")";
+    String CalMixedString = "RGBW("+String(current_calibration_mixed[0])+":"+String(current_calibration_mixed[1])+":"+String(current_calibration_mixed[2])+":"+String(current_calibration_mixed[3])+")";
+
+    if (page == 0 or page == 1) {
+      SendUartCmd("InfoPage: [0], Version: [20240121], MacId: ["+MacIdString+"]",true);
+    }
+    if (page == 0 or page == 2) {
+      SendUartCmd("InfoPage: [1], Current/TargetTemp: ["+CurrentTempString+":"+TargetTempString+"]C, FanPower(0-2048): ["+FanPowerString+"], FanSpeed: ["+FanRPMString+"]RPM, CurrentColor(0-2048): ["+CurrentColorString+"], uncalRed: ["+UncalibRedString+"]", true);
+    }
+    if (page == 0 or page == 3) {
+      SendUartCmd("InfoPage: [2], CalA: ["+CalAString+"], CalB: ["+CalBString+"], CalMixed: ["+CalMixedString+"]", true);
+    }
+  }
+
   // Command 01 : SetRGBW(%i:%i:%i:%i) <- [0-2048]
   if (command==1) {
       int IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite;
@@ -16,7 +60,7 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
         return;
       }
       // if new values
-      sprintf(printout, "SetRGBW(%i:%i:%i:%i) <- [0-2048]", IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite);
+      sprintf(printout, "SetRGBW[%i:%i:%i:%i] <- (0-2048)", IntensityRed, IntensityGreen, IntensityBlue, IntensityWhite);
       SendUartCmd(String(printout), true);
       if ((pwmValueRed != IntensityRed) or
         (pwmValueGreen != IntensityGreen) or
@@ -48,7 +92,7 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
       return;
     }
 
-    sprintf(printout, "SetRGBt(%i:%i:%i:%i) <- [0-255]", IntensityRed, IntensityGreen, IntensityBlue, WhiteBalance);
+    sprintf(printout, "SetRGBt[%i:%i:%i:%i] <- (0-255)", IntensityRed, IntensityGreen, IntensityBlue, WhiteBalance);
     SendUartCmd(String(printout), true);
 
     set_RGBt(IntensityRed, IntensityGreen, IntensityBlue, WhiteBalance, 0, true);
