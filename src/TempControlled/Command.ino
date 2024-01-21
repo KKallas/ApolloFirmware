@@ -76,6 +76,36 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
     SendUartCmd(String(printout), true);
   }
 
+  // Command 04
+  if (command==4) {
+    int ButtonId;
+    long ButtonZeroTime;
+    // split up params
+    char paramsCharArray[64];
+    Params.toCharArray(paramsCharArray, Params.length()+1);
+    if (sscanf(paramsCharArray, "%i", &ButtonId) != 1) {
+      // TODO: Value range check
+      SendUartCmd("ERROR: correct input format DS04->%i", true);
+      return;
+    }
+
+    // get current time in millis
+    ButtonZeroTime = millis();
+    // go through the array if number is not 0 subtracti it from current time, if it is zero stop
+    String AllTimes = "BTN"+String(ButtonId)+":";
+    for(int i=0;i<16;i++) {
+      if(ButtonPressLog[ButtonId][i]>0) {
+        AllTimes = AllTimes + String(ButtonZeroTime-ButtonPressLog[ButtonId][i])+":";
+      } else {
+        break;
+      }
+    }
+
+    // remove the last semicolon
+    AllTimes = AllTimes.substring(0,AllTimes.length()-1);
+    SendUartCmd(AllTimes, true);
+  }
+
   // Command 90: SetTempCalibration(%i[%i:%i:%i:%i:%i:%i:%i:%i:%i:%i:%i]) <- [0-2048]
   if (command==90) {
     int pt[11];

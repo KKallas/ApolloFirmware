@@ -83,6 +83,8 @@ int calibration_points[6][9][5];     // Calibartion points [Kelvin 0-5][8-1][R, 
 int color_calibration_points[4][11]; // Temp/Ouptput scale LUT [RGBW][lut point at temp sensor points {-160, -80, 0, 80, 160, 240, 320, 400, 480, 560, 640}]
 bool disable_red_comp = false;
 int UartbytesAvailable;
+long ButtonPressLog[2][16];
+int ButtonIndex[2] = {0,0};
 
 void setup() {
  

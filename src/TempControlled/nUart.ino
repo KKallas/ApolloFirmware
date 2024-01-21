@@ -5,8 +5,7 @@
   // Other setup code
 }
 */
-long ButtonPressLog[2][16];
-int ButtonIndex[2] = {0,0};
+
 
 
 void logButtonPress(int button) {
@@ -14,7 +13,7 @@ void logButtonPress(int button) {
   if (ButtonIndex[button] > 15) {
     ButtonIndex[button] = 0;
   }
-  ButtonPressLog[button][ButtonIndex[button]];
+  ButtonPressLog[button][ButtonIndex[button]] = millis();
   ButtonIndex[button]++;
 }
 
