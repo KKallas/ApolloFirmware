@@ -7,11 +7,20 @@
 #include <ezButton.h> // 1.0.4
 
 // IO pins
-const int redPin = 21;            // IO21 (Red Channel)
-const int greenPin = 19;          // IO19 (Green Channel) 
-const int bluePin = 18;           // IO18 (Blue Channel)
-const int whitePin = 4;           // IO04 (White Channel)
-const int fanPin = 0;             // IO0  (Fan)          
+#define VERSION_4  // Define this macro for version 3 hardware, otherwise VERSION_4
+
+#ifdef VERSION_3
+const int redPin = 21;      // IO21 (Red Channel)
+const int greenPin = 19;    // IO19 (Green Channel)
+const int bluePin = 18;     // IO18 (Blue Channel)
+const int whitePin = 4;     // IO04 (White Channel)
+#else
+const int redPin = 4;       // IO04 (Red Channel)
+const int greenPin = 18;    // IO18 (Green Channel)
+const int bluePin = 19;     // IO19 (Blue Channel)
+const int whitePin = 21;    // IO21 (White Channel)
+#endif
+const int fanPin = 0;       // IO0  (Fan)          
 
 const int EnabledPin = 27;
 const int I2cSdaPin = 23;
@@ -54,7 +63,7 @@ int sortedArray[5];
 bool overheated;
                                     // FAN
 int FanSpeed = 0;
-int FanSpeedStep = 128;
+int FanSpeedStep = 32;
 int targetTempData  = 520;          // Temp we are aiming to keep the lamp in (200-640) val*0.125 = temp in Celsius 65C
 int pwmValueFan  = 0;
 

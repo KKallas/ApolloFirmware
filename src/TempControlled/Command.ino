@@ -37,13 +37,13 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
     String CalMixedString = "RGBW("+String(current_calibration_mixed[0])+":"+String(current_calibration_mixed[1])+":"+String(current_calibration_mixed[2])+":"+String(current_calibration_mixed[3])+")";
 
     if (page == 0 or page == 1) {
-      SendUartCmd("InfoPage: [0], Version: [20240121], MacId: ["+MacIdString+"]",true);
+      SendUartCmd("InfoPage: [1], Version: [20240123], MacId: ["+MacIdString+"]",true);
     }
     if (page == 0 or page == 2) {
-      SendUartCmd("InfoPage: [1], Current/TargetTemp: ["+CurrentTempString+":"+TargetTempString+"]C, FanPower(0-2048): ["+FanPowerString+"], FanSpeed: ["+FanRPMString+"]RPM, CurrentColor(0-2048): ["+CurrentColorString+"], uncalRed: ["+UncalibRedString+"]", true);
+      SendUartCmd("InfoPage: [2], Current/TargetTemp: ["+CurrentTempString+":"+TargetTempString+"]C, FanPower(0-2048): ["+FanPowerString+"], FanSpeed: ["+FanRPMString+"]RPM, CurrentColor(0-2048): ["+CurrentColorString+"], uncalRed: ["+UncalibRedString+"]", true);
     }
     if (page == 0 or page == 3) {
-      SendUartCmd("InfoPage: [2], CalA: ["+CalAString+"], CalB: ["+CalBString+"], CalMixed: ["+CalMixedString+"]", true);
+      SendUartCmd("InfoPage: [3], CalA: ["+CalAString+"], CalB: ["+CalBString+"], CalMixed: ["+CalMixedString+"]", true);
     }
   }
 
@@ -116,7 +116,7 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
 
     targetTempData = map(TargetTemp,0,255,240,640);
 
-    sprintf(printout, "SetTempTarget(%i) %i/%iC <- [30-80C = 0-255]", TargetTemp, int(0.125*targetTempData), int(0.125*currentTempData));
+    sprintf(printout, "SetTempTarget(%i) [%i]/[%i]C <- |30-80C = 0-255|", TargetTemp, int(0.125*targetTempData), int(0.125*currentTempData));
     SendUartCmd(String(printout), true);
   }
 
@@ -159,7 +159,7 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
     Params.toCharArray(paramsCharArray, Params.length()+1);
     if (sscanf(paramsCharArray, "%i[%i:%i:%i:%i:%i:%i:%i:%i:%i:%i:%i]", &ChInput, &pt[0], &pt[1], &pt[2], &pt[3], &pt[4], &pt[5], &pt[6], &pt[7], &pt[8], &pt[9], &pt[10]) != 12) {
       // TODO: Value range check
-      SendUartCmd("ERROR: correct input format DS90->%i[%i:%i:%i:%i:%i:%i:%i:%i:%i:%i:%i]", true);
+      SendUartCmd("ERROR: correct input format DS90->%i|%i:%i:%i:%i:%i:%i:%i:%i:%i:%i:%i|", true);
       return;
     }
 
@@ -172,7 +172,7 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
     EEPROM.put(storedLutSize+storedDmxOffsetSize+storedRgbwSize, color_calibration_points);
     EEPROM.commit();
     
-    sprintf(printout, "SetTempCalibration(%i[%i:%i:%i:%i:%i:%i:%i:%i:%i:%i:%i]) [0-2048]", ChInput,
+    sprintf(printout, "SetTempCalibration(%i[%i:%i:%i:%i:%i:%i:%i:%i:%i:%i:%i]) <- (0-2048)", ChInput,
                                                                                            color_calibration_points[ChInput][0],
                                                                                            color_calibration_points[ChInput][1],
                                                                                            color_calibration_points[ChInput][2],
@@ -201,7 +201,7 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
     }
 
     EEPROM.get(storedLutSize+storedDmxOffsetSize+storedRgbwSize, color_calibration_points);
-    sprintf(printout, "GetTempCalibration(%i[%i:%i:%i:%i:%i:%i:%i:%i:%i:%i:%i]) [0-2048]", ChInput,
+    sprintf(printout, "GetTempCalibration(%i[%i:%i:%i:%i:%i:%i:%i:%i:%i:%i:%i]) <- (0-2048)", ChInput,
                                                                                           color_calibration_points[ChInput][0],
                                                                                           color_calibration_points[ChInput][1],
                                                                                           color_calibration_points[ChInput][2],
@@ -223,16 +223,17 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
     char paramsCharArray[64];
     Params.toCharArray(paramsCharArray, Params.length()+1);
 
-    if (sscanf(paramsCharArray, "%i:%i[%i:%i:%i:%i:%i]", &TempInput, &BrightnessInput, &RgbwLux_in[0], &RgbwLux_in[1], &RgbwLux_in[2], &RgbwLux_in[3], &RgbwLux_in[4]) != 6) {
+    if (sscanf(paramsCharArray, "%i:%i:%i[%i:%i:%i:%i:%i]", &TempInput, &BrightnessInput, &RgbwLux_in[4], &RgbwLux_in[0], &RgbwLux_in[1], &RgbwLux_in[2], &RgbwLux_in[3]) != 7) {
       // TODO: Value range check
-      SendUartCmd("ERROR: correct input format DS93->%i:%i[%i:%i:%i:%i] KelvinTemp[0:2800,1:3200,2:4800,3:5600:4:7800,5:10000]:BrightnessPoint[2-8][r,g,b,w 0-2048, lux]", true);
+      SendUartCmd("ERROR: correct input format DS93->%i:%i:%i|%i:%i:%i:%i| KelvinTemp(0:2800,1:3200,2:4800,3:5600:4:7800,5:10000):BrightnessPoint(2-8):ActualLux|r,g,b,w 0-2048, lux|", true);
       return;
     }
 
     EEPROM.put((TempInput*9*5*sizeof(int))+(BrightnessInput*5*sizeof(int)), RgbwLux_in);
     EEPROM.commit();
 
-    sprintf(printout, "%i:%i[%i:%i:%i:%i]", (TempInput*9*5*sizeof(int))+(BrightnessInput*5*sizeof(int)), RgbwLux_in[4], RgbwLux_in[0], RgbwLux_in[1], RgbwLux_in[2], RgbwLux_in[3]);
+    sprintf(printout, "WriteCalibartion %i[%i][%i:%i:%i:%i]", (TempInput*9*5*sizeof(int))+(BrightnessInput*5*sizeof(int)), RgbwLux_in[4], RgbwLux_in[0], RgbwLux_in[1], RgbwLux_in[2], RgbwLux_in[3]);
+    // RgbwLux_in[4] actual lux
     SendUartCmd(String(printout), true);
   }
 
@@ -245,7 +246,7 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
     Params.toCharArray(paramsCharArray, Params.length()+1);
 
     if (sscanf(paramsCharArray, "%i:%i", &TempInput, &BrightnessInput) != 2) {
-      SendUartCmd("ERROR: correct input format DS94->%i:%i KelvinTemp[0:2800,1:3200,2:4800,3:5600:4:7800,5:10000]:BrightnessPoint[2-8]", true);
+      SendUartCmd("ERROR: correct input format DS94->%i:%i KelvinTemp|0:2800,1:3200,2:4800,3:5600:4:7800,5:10000|:BrightnessPoint|2-8|", true);
       return;
     }
     // TODO: Value range check
@@ -253,7 +254,7 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
 
     // Read the calibration point from EEPROM
     EEPROM.get((TempInput*9*5*sizeof(int))+(BrightnessInput*5*sizeof(int)), RgbwLux_in);
-    sprintf(printout, "%i:%i[%i:%i:%i:%i]", (TempInput*9*5*sizeof(int))+(BrightnessInput*5*sizeof(int)), RgbwLux_in[4], RgbwLux_in[0], RgbwLux_in[1], RgbwLux_in[2], RgbwLux_in[3]);
+    sprintf(printout, "ReadCalibartion addr:actual lux|r:g:b:W| %i:[%i][%i:%i:%i:%i]", (TempInput*9*5*sizeof(int))+(BrightnessInput*5*sizeof(int)), RgbwLux_in[4], RgbwLux_in[0], RgbwLux_in[1], RgbwLux_in[2], RgbwLux_in[3]);
     SendUartCmd(String(printout), true);
   }
   // Command 99: Send back the params
