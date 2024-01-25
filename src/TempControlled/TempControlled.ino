@@ -63,7 +63,7 @@ int sortedArray[5];
 bool overheated;
                                     // FAN
 int FanSpeed = 0;
-int FanSpeedStep = 32;
+int FanSpeedStep = 64;
 int targetTempData  = 520;          // Temp we are aiming to keep the lamp in (200-640) val*0.125 = temp in Celsius 65C
 int pwmValueFan  = 0;
 
