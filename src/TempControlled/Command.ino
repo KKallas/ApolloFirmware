@@ -43,7 +43,7 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
       SendUartCmd("InfoPage: [2], Current/TargetTemp: ["+CurrentTempString+":"+TargetTempString+"]C, FanPower(0-2048): ["+FanPowerString+"], FanSpeed: ["+FanRPMString+"]RPM, CurrentColor(0-2048): ["+CurrentColorString+"], uncalRed: ["+UncalibRedString+"]", true);
     }
     if (page == 0 or page == 3) {
-      SendUartCmd("InfoPage: [3], CalA: ["+CalAString+"], CalB: ["+CalBString+"], CalMixed: ["+CalMixedString+"]", true);
+      SendUartCmd("InfoPage: [3], CalA: ["+CalAString+"], CalB: ["+CalBString+"], CalMixed: ["+CalMixedString+"], last WB index: ["+String(wb_index)+"]", true);
     }
   }
 

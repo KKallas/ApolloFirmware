@@ -124,7 +124,7 @@ void update_calib(int intensity, int wb) {
   int int_index = findLastSmallerInt(intensity);
 
   // Find the index for the last smaller white balance value in the lookup table     
-  int wb_index = findLastSmallerWb(wb);
+  wb_index = findLastSmallerWb(wb);
 
   // Handle a special case when white balance is 0
   if (wb==0) {

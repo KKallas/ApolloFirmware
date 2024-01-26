@@ -85,7 +85,8 @@ int current_calibration_B[4] = {0, 0, 0, 0};
 int current_calibration_mixed[4] = {0, 0, 0, 0};
 int intesity_list[9]     = {0, 1, 36, 73, 109, 145, 181,  218,  255}; 
 int intesity_list_log[9] = {0, 1, 32, 64, 128, 256, 512, 1024, 2048};
-int wb_index_list[6] = {0,14,71,100,178,255}; 
+int wb_index_list[6] = {0,14,71,100,178,255};
+int wb_index; 
 int temperature_range[] = {-160, -80, 0, 80, 160, 240, 320, 400, 480, 560, 640};
 
 int calibration_points[6][9][5];     // Calibartion points [Kelvin 0-5][8-1][R, G, B, W, Lux]
