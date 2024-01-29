@@ -37,13 +37,17 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
     String CalMixedString = "RGBW("+String(current_calibration_mixed[0])+":"+String(current_calibration_mixed[1])+":"+String(current_calibration_mixed[2])+":"+String(current_calibration_mixed[3])+")";
 
     if (page == 0 or page == 1) {
-      SendUartCmd("InfoPage: [1], Version: [20240125], MacId: ["+MacIdString+"]",true);
+      SendUartCmd("InfoPage: [1], Version: [20240127], MacId: ["+MacIdString+"]",true);
     }
     if (page == 0 or page == 2) {
       SendUartCmd("InfoPage: [2], Current/TargetTemp: ["+CurrentTempString+":"+TargetTempString+"]C, FanPower(0-2048): ["+FanPowerString+"], FanSpeed: ["+FanRPMString+"]RPM, CurrentColor(0-2048): ["+CurrentColorString+"], uncalRed: ["+UncalibRedString+"]", true);
     }
     if (page == 0 or page == 3) {
       SendUartCmd("InfoPage: [3], CalA: ["+CalAString+"], CalB: ["+CalBString+"], CalMixed: ["+CalMixedString+"], last WB index: ["+String(wb_index)+"]", true);
+    }
+    if (page == 0 or page == 4) {
+      SendUartCmd("InfoPage: [4], longest UART command time after last info page: ["+String(processTimer1[1])+"]ms", true);
+      processTimer1[1] = 0;
     }
   }
 
@@ -95,7 +99,7 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
     sprintf(printout, "SetRGBt[%i:%i:%i:%i] <- (0-255)", IntensityRed, IntensityGreen, IntensityBlue, WhiteBalance);
     SendUartCmd(String(printout), true);
 
-    set_RGBt(IntensityRed, IntensityGreen, IntensityBlue, WhiteBalance, 0, true);
+    set_RGBt(IntensityRed, IntensityGreen, IntensityBlue, WhiteBalance, 0, false);
     pwmValueRed = current_calibration_mixed[0];
     pwmValueGreen = current_calibration_mixed[1];
     pwmValueBlue = current_calibration_mixed[2];

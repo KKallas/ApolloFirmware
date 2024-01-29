@@ -17,6 +17,8 @@ void logButtonPress(int button) {
   ButtonIndex[button]++;
 }
 
+
+
 void UartComm(void * pvParameters) {
   String taskMessage = "Running UART on: ";
   taskMessage = taskMessage + xPortGetCoreID();
@@ -57,8 +59,13 @@ void UartComm(void * pvParameters) {
       }
     }
     // Add loop to handle UART input and output
+
+    processTimer1[0] = millis();
     RecvUart();
-    delayMicroseconds(50);
+    if (processTimer1[1] < millis() - processTimer1[0]) {
+      processTimer1[1] = millis() - processTimer1[0];
+    }
+    //delayMicroseconds(50);
   }
 }
 
@@ -104,13 +111,13 @@ void HandleUartCmd() {
   // Get terminator and checksum
   String fullTerminator = commands[numCommands-1];
   int checksum = getChecksum(fullTerminator);
-  int calcChecksum = calculateChecksum(commandsInput.substring(0,terminatorLocation-4));
+  if (checksum != 0) {
+    int calcChecksum = calculateChecksum(commandsInput.substring(0,terminatorLocation-4));
 
-  if (checksum != calcChecksum) {
-    if (checksum != 0) {
-      SendUartCmd("checksum failed packed/calculated: "+String(checksum,HEX)+"/"+String(calcChecksum,HEX), true);
-      return;
-    }
+    if (checksum != calcChecksum) {
+        SendUartCmd("checksum failed packed/calculated: "+String(checksum,HEX)+"/"+String(calcChecksum,HEX), true);
+        return;
+      }
   }
   
   // Execute commands

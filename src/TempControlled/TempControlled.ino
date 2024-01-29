@@ -68,7 +68,7 @@ int targetTempData  = 520;          // Temp we are aiming to keep the lamp in (2
 int pwmValueFan  = 0;
 
                                     // UART
-char UartReceivedChars[512];        // an array to store the received UART data
+char UartReceivedChars[256];        // an array to store the received UART data
 boolean UartNewData = false;        // if all characters until newline are recieved
 const int storedLutSize = sizeof(int)*9*5*6;
 const int storedDmxOffsetSize = sizeof(int);
@@ -95,6 +95,7 @@ bool disable_red_comp = false;
 int UartbytesAvailable;
 long ButtonPressLog[2][16];
 int ButtonIndex[2] = {0,0};
+long processTimer1[2];
 
 void setup() {
  
