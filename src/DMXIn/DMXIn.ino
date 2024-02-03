@@ -113,6 +113,8 @@ void loop() {
         Serial.println("new");
       }
 
+      Serial2PrintTime = millis() - Serial2PrintTime;
+      
       if (now - lastUpdate > 1000) {
         /* Print the received start code - it's usually 0. */
         Serial.printf("DS10->recieved [%i] packets in a sec, serial2 printed las time in [%i]ms//0000:::\n", packetsPerSec, Serial2PrintTime);
