@@ -37,7 +37,7 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
     String CalMixedString = "RGBW("+String(current_calibration_mixed[0])+":"+String(current_calibration_mixed[1])+":"+String(current_calibration_mixed[2])+":"+String(current_calibration_mixed[3])+")";
 
     if (page == 0 or page == 1) {
-      SendUartCmd("InfoPage: [1], Version: [20240127], MacId: ["+MacIdString+"]",true);
+      SendUartCmd("InfoPage: [1], Version: [20240220], MacId: ["+MacIdString+"]",true);
     }
     if (page == 0 or page == 2) {
       SendUartCmd("InfoPage: [2], Current/TargetTemp: ["+CurrentTempString+":"+TargetTempString+"]C, FanPower(0-2048): ["+FanPowerString+"], FanSpeed: ["+FanRPMString+"]RPM, CurrentColor(0-2048): ["+CurrentColorString+"], uncalRed: ["+UncalibRedString+"]", true);

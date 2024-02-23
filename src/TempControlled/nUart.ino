@@ -30,15 +30,18 @@ void UartComm(void * pvParameters) {
     
     if (buttonPower.isPressed()) {
       logButtonPress(0);
+      /*
       if (powerSate) {
         powerSate = false;
       } else {
         powerSate = true;
       }
+      */
     }
 
     if(buttonProgram.isPressed()) {
       logButtonPress(1);
+      /*
       if (programSate) {
         programSate = false;
         lastRGBW[0] = pwmValueRed;
@@ -57,6 +60,7 @@ void UartComm(void * pvParameters) {
         pwmValueBlue = lastRGBW[2];
         pwmValueWhite = lastRGBW[3];
       }
+      */
     }
     // Add loop to handle UART input and output
 

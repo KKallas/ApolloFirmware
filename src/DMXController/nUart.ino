@@ -48,6 +48,13 @@ void ForwardSerial2() {
       Uart2ReceivedChars[ndx] = '\0'; // terminate the string
       ndx = 0;
       MoreSerial2Data = true;
+      // need to get the last RGBt values to be able to show them on the Rotary Encoder Display
+      sscanf(Uart2ReceivedChars,"DS10->SetRGBt[%i:%i:%i:%i]",&lastValI2C[2],&lastValI2C[3],&lastValI2C[4],&lastValI2C[1]);
+      // Fix Kelvin from 8 bit
+      lastValI2C[1] = convertByteToKelvin(lastValI2C[1]);
+      // Calculate Intesity
+      lastValI2C[0] = findMin(lastValI2C[2],lastValI2C[3],lastValI2C[4]);
+      // print UART for debuging
       Serial.println(Uart2ReceivedChars);
     }
   }
