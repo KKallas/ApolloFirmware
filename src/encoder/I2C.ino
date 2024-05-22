@@ -1,4 +1,5 @@
 void sendColorToController() {
+  // Send data to DMX controller
   Wire.beginTransmission(I2C_SLAVE_ADDRESS);
   for (int i = 0; i < 9; i++) {
     Wire.write((byte*)&currValue[i], 2); // Send each int16_t as two bytes
@@ -13,9 +14,9 @@ void sendColorToController() {
 
 void I2cComm(void * pvParameters) {
   while(true) {
-    if(millis()>lastI2cUpdate+250 && millis()>lastI2cSent+500) {
+    if(millis()>lastI2cUpdate+250 && millis()>lastI2cSent+500 && millis()>lastTurn+100) {
       requestColorFromSlave(true);
-      delayMicroseconds(50000);
+      delay(20);
       requestColorFromSlave(false);
       lastI2cUpdate = millis();
     }
@@ -58,16 +59,8 @@ void requestColorFromSlave(bool early) {
                                                       sentData[8]); 
     // Update values
     for(int i = 0; i < 9; i++) {
-      currValue[i] = receivedData[i];
-      // Make it look like we sent out the same values
-      //sentData[i] = currValue[i];
-    }
-
-    // Redraw the screen
-    redrawScreen();
-    
-    EEPROM.put(0, currValue);
-    EEPROM.commit();
+      currValue[i] = receivedData[i];  
+      }
   }
 }
 
@@ -78,21 +71,10 @@ int findMin(int inp1, int inp2, int inp3) {
   return localMin;
 }
 
-int convertKelvinToByte(int input) {
-  int value = (input-2800)/28;
-  if(value > 255) value = 255;
-  return value;
-}
-
-int convertByteToKelvin(int input) {
-  int value = (input*28)+2800;
-  return value;
-}
-
 bool sendAndRecieveDif() {
   for(int i=0; i < 9; i++) {
     if(receivedData[i] != currValue[i]) {
-      Serial.printf("(%i)[%i:%i],", i, receivedData[i], currValue[i]);
+      //Serial.printf("(%i)[%i:%i],", i, receivedData[i], currValue[i]);
       return true;
     }
   }

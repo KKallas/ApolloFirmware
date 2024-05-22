@@ -96,7 +96,7 @@ void RunUartCmd(int command, String Params, int CurrCommandNr, int TotalCommands
       return;
     }
 
-    sprintf(printout, "SetRGBt[%i:%i:%i:%i] <- (0-255)", IntensityRed, IntensityGreen, IntensityBlue, WhiteBalance);
+    sprintf(printout, "SetRGBt[%i:%i:%i:%i][%i:%i] <- (0-255)", IntensityRed, IntensityGreen, IntensityBlue, WhiteBalance, currentTempData, fanRpm);
     SendUartCmd(String(printout), true);
 
     set_RGBt(IntensityRed, IntensityGreen, IntensityBlue, WhiteBalance, 0, false);

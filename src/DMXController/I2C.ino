@@ -7,9 +7,11 @@ void receiveEvent(int howMany) {
     i++;
   }
   SendUartCmd("DS02->"+String(recievedData[2])+":"+String(recievedData[3])+":"+String(recievedData[4])+":"+String(convertKelvinToByte(recievedData[1])), true, true);
+  //Serial.printf("DEBUG: %i:%i\n", recievedData[1], convertKelvinToByte(recievedData[1]));
   // Get DMX enabled fom GUI
   dmxEnabled = recievedData[6];
   lastValI2C[6] = dmxEnabled;
+  // TODO: Add fan and temp data
 }
 
 void requestEvent() {
@@ -18,15 +20,67 @@ void requestEvent() {
   }
 }
 
+// TODO make curve implementations
+/**
+ * Convert Kelvin To Byte
+ *
+ * Take 2800-10000 input and make it into 8 bit output according to:
+ * 2800-3200-4800-5600-7800-10000 = 7200K (full range)
+ * 0    400  2000 2800 5000 7200          (offset from 2800)
+ * 0    14   71   100  178  255           (offset as 8 bit values for DMX) 
+ * @param input The Kelvin value input 2800-10000(K)
+ */
 int convertKelvinToByte(int input) {
-  int value = (input-2800)/28;
-  if(value > 255) value = 255;
-  return value;
+  // Limit inputs
+  if(input < 2800) {return(0);}
+  if(input > 10000) {return(255);}
+
+  // Map ranges
+  if(input < 3200) {
+    return(round(map(input, 2800, 3200, 0, 14)));
+  }
+  if(input < 4800) {
+    return(round(map(input, 3200, 4800, 14, 71)));
+  }
+  if(input < 5600) {
+    return(round(map(input, 4800, 5600, 71, 100)));
+  }
+  if(input < 7800) {
+    return(round(map(input, 5600, 7800, 100, 178)));
+  }
+
+  return(round(map(input, 7800, 10000, 178, 255)));
 }
 
+/**
+ * Convert Byte To Kelvin
+ *
+ * Take 0-255 input and make it into 2800-10000 int:
+ * 2800-3200-4800-5600-7800-10000 = 7200K (full range)
+ * 0    400  2000 2800 5000 7200          (offset from 2800)
+ * 0    14   71   100  178  255           (offset as 8 bit values for DMX) 
+ * @param input The 8bit 0-255 value to be converted to Kelvin value
+ */
 int convertByteToKelvin(int input) {
-  int value = (input*28)+2800;
-  return value;
+  // Limit inputs
+  if(input < 0) {return(2800);}
+  if(input > 255) {return(10000);}
+
+  // Map ranges
+  if(input < 14) {
+    return(round(map(input, 0, 14, 28, 32))*100);
+  }
+  if(input < 71) {
+    return(round(map(input, 14, 71, 32, 48))*100);
+  }
+  if(input < 100) {
+    return(round(map(input, 71, 100, 48, 56))*100);
+  }
+  if(input < 178) {
+    return(round(map(input, 100, 178, 56, 78))*100);
+  }
+
+  return(round(map(input, 178, 255, 78, 100))*100);
 }
 
 int findMin(int inp1, int inp2, int inp3) {

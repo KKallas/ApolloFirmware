@@ -49,8 +49,8 @@ void ForwardSerial2() {
       ndx = 0;
       MoreSerial2Data = true;
       // need to get the last RGBt values to be able to show them on the Rotary Encoder Display
-      sscanf(Uart2ReceivedChars,"DS10->SetRGBt[%i:%i:%i:%i]",&lastValI2C[2],&lastValI2C[3],&lastValI2C[4],&lastValI2C[1]);
-      // Fix Kelvin from 8 bit
+      sscanf(Uart2ReceivedChars,"DS10->SetRGBt[%i:%i:%i:%i][%i:%i]",&lastValI2C[2],&lastValI2C[3],&lastValI2C[4],&lastValI2C[1],&lastValI2C[7],&lastValI2C[8]);
+      // Fix Kelvin from 8 bit as the 255 range does not match nicley with 2800-10000K range the value will be rounded to closest 100s
       lastValI2C[1] = convertByteToKelvin(lastValI2C[1]);
       // Calculate Intesity
       lastValI2C[0] = findMin(lastValI2C[2],lastValI2C[3],lastValI2C[4]);

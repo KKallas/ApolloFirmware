@@ -32,7 +32,7 @@ boolean UartNewData = false;        // if all characters until newline are recie
 
 int packetsPerSec;
 int lastValDMX[4] = {0,0,0,0};
-int lastValI2C[9] = {0,0,0,0,0,0,0,0,0}; // R,G,B,kelvin temp,dmx offset,dmx enabled
+int lastValI2C[9] = {0,0,0,0,0,0,0,0,0}; // [1]:R, [2]:G, [3]:B, [4]:kelvin temp, [5]:dmx offset, [6]:dmx enabled, [7]:lamp temp C, [8]fan rpm
 
 void setup() {
  
