@@ -19,7 +19,7 @@ void setup() {
 void loop() {
 	uint8_t counter;
 	uint16_t brightness;
-  Serial.printf("%i\n", counter);
+  	Serial.printf("%i\n", counter);
 
 	brightness = 0;
 	while (brightness <= BRIGHTNESS_MAX) {

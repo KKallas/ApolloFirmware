@@ -22,11 +22,14 @@
 //#include <avr/io.h>
 #include <stdint.h>
 #include "driver/gpio.h"
-//#include <Arduino.h>
+#include <Arduino.h>
 #include "MBI5030.h"
 #define HIGH 1
 #define LOW 0
-gpio_num_t spi_out, spi_in, spi_clk, spi_latch ; 
+
+gpio_num_t spi_out, spi_in, spi_clk, spi_latch;
+volatile uint32_t *io_port;
+uint16_t io_bitmask; 
 
 MBI5030::MBI5030(gpio_num_t spi_out_pin, gpio_num_t spi_in_pin, gpio_num_t spi_clk_pin, gpio_num_t spi_latch_pin)
 {
@@ -34,6 +37,15 @@ MBI5030::MBI5030(gpio_num_t spi_out_pin, gpio_num_t spi_in_pin, gpio_num_t spi_c
 	spi_in = spi_in_pin;
 	spi_clk = spi_clk_pin;
 	spi_latch = spi_latch_pin;
+	
+	if(spi_clk == HIGH){
+		gpio_set_level(spi_clk,LOW);
+		gpio_set_level(spi_clk,HIGH);
+	}
+	else{
+		gpio_set_level(spi_clk,HIGH);	
+		gpio_set_level(spi_clk,LOW);	
+	}
 }
 
 void MBI5030::spi_init(void)
@@ -265,97 +277,102 @@ void MBI5030::write_config(uint16_t config_mask, uint8_t current_gain , uint8_t 
 	spi_clk_low();
 }
 ////////////////////////////////////////////////////////////////////////////////
-// void MBI5030::enable_error_detection(void)
-// {
-// 	spi_latch_high();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	spi_clk_high();
-// 	spi_latch_low();
-// 	spi_clk_low();
-// 	delayMicroseconds(64);	// some time to stabilize readings
-// }
+void MBI5030::enable_error_detection(void)
+{
+	spi_latch_high();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	spi_clk_high();
+	spi_latch_low();
+	spi_clk_low();
+	delayMicroseconds(64);	// some time to stabilize readings
+}
 
-// void MBI5030::prepare_error_report(void)
-// {
-// 	spi_latch_high();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	spi_clk_high();
-// 	spi_latch_low();
-// 	spi_clk_low();
-// }
+void MBI5030::prepare_error_report(void)
+{
+	spi_latch_high();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	spi_clk_high();
+	spi_latch_low();
+	spi_clk_low();
+}
 
-// uint16_t MBI5030::read_error_report(void)
-// {
-// 	enable_error_detection();
-// 	prepare_error_report();
-// 	return read_register();
-// }
+uint16_t MBI5030::read_error_report(void)
+{
+	enable_error_detection();
+	prepare_error_report();
+	return read_register();
+}
 
-// uint16_t MBI5030::read_register(void)
-// {
-// 	uint16_t register_status = 0;
-// 	uint8_t register_status_bit;
+uint16_t MBI5030::read_register(void)
+{
+	
 
-// 	// read bits 0-14
-// 	for (register_status_bit = 0; register_status_bit <= 14;
-// 	     register_status_bit++) {
-// 		if (*_spi_in_PIN & _spi_in_pinmask) {
-// 			register_status |= 1;
-// 		} else {
-// 			// already full with zeros
-// 		}
-// 		pulse_spi_clk();
-// 		register_status <<= 1;
-// 	}
+	*io_port = io_bitmask;
+	*io_port = (io_bitmask << 16);
 
-// 	// read bit 15
-// 	if (*_spi_in_PIN & _spi_in_pinmask) {
-// 		register_status |= 1;
-// 	} else {
-// 		// already full with zeros
-// 	}
+	uint16_t register_status = 0;
+	uint8_t register_status_bit;
 
-// 	return register_status;
-// }
+	// read bits 0-14
+	for (register_status_bit = 0; register_status_bit <= 14;
+	     register_status_bit++) {
+		if (*io_port & io_bitmask) {
+			register_status |= 1;
+		} else {
+			// already full with zeros
+		}
+		pulse_spi_clk();
+		register_status <<= 1;
+	}
 
-// void MBI5030::prepare_config_read(void)
-// {
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	spi_latch_high();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	pulse_spi_clk();
-// 	spi_clk_high();
-// 	spi_latch_low();
-// 	spi_clk_low();
-// }
+	// read bit 15
+	if (*io_port & io_bitmask) {
+		register_status |= 1;
+	} else {
+		// already full with zeros
+	}
 
-// uint16_t MBI5030::read_config(void)
-// {
-// 	prepare_config_read();
-// 	return read_register();
-// }
+	return register_status;
+}
+
+void MBI5030::prepare_config_read(void)
+{
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	spi_latch_high();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	pulse_spi_clk();
+	spi_clk_high();
+	spi_latch_low();
+	spi_clk_low();
+}
+
+uint16_t MBI5030::read_config(void)
+{
+	prepare_config_read();
+	return read_register();
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
